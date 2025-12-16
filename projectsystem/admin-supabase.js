@@ -1142,13 +1142,15 @@
   // PERFORMANCE CHART
   // =============================================
   let perfWeekOffset = 0;
+  let performanceChart = null;
 
   function renderPerformanceChart() {
-    const container = document.getElementById('perfChartContainer');
+    const canvas = document.getElementById('employeePerformanceChart');
     const labelEl = document.getElementById('perfWeekLabel');
-    const avgEl = document.getElementById('perfAverage');
-    if (!container) return;
+    const summaryEl = document.getElementById('perfSummaryText');
+    if (!canvas) return;
 
+    const ctx = canvas.getContext('2d');
     const weekStart = getOffsetWeekStart(perfWeekOffset);
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
@@ -1157,11 +1159,12 @@
       labelEl.textContent = formatWeekLabel(weekStart);
     }
 
-    container.innerHTML = '';
-
     if (employees.length === 0) {
-      container.innerHTML = '<div class="muted" style="padding:20px;text-align:center">No employees available</div>';
-      if (avgEl) avgEl.textContent = '0% average';
+      if (summaryEl) summaryEl.textContent = '0% average';
+      if (performanceChart) {
+        performanceChart.destroy();
+        performanceChart = null;
+      }
       return;
     }
 
@@ -1200,52 +1203,82 @@
     const totalOnTime = perfData.reduce((sum, p) => sum + p.onTime, 0);
     const totalDays = perfData.reduce((sum, p) => sum + p.total, 0);
     const avgPercent = totalDays > 0 ? Math.round((totalOnTime / totalDays) * 100) : 0;
-    if (avgEl) avgEl.textContent = avgPercent + '% average';
+    if (summaryEl) summaryEl.textContent = avgPercent + '% average';
 
-    // Render horizontal bar chart
-    perfData.forEach(p => {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;margin-bottom:8px;gap:10px;';
+    // Prepare data for Chart.js horizontal bar chart
+    const labels = perfData.map(p => `${p.name} (${p.id})`);
+    const onTimeData = perfData.map(p => p.onTime);
+    const lateData = perfData.map(p => p.late);
+    const absentData = perfData.map(p => p.absent);
 
-      const label = document.createElement('div');
-      label.style.cssText = 'width:140px;font-size:12px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-      label.textContent = `${p.name} (${p.id})`;
-
-      const barContainer = document.createElement('div');
-      barContainer.style.cssText = 'flex:1;height:20px;background:#f3f4f6;border-radius:4px;display:flex;overflow:hidden;';
-
-      const total = p.onTime + p.late + p.absent;
-      if (total > 0) {
-        if (p.onTime > 0) {
-          const onTimeBar = document.createElement('div');
-          onTimeBar.style.cssText = `width:${(p.onTime/total)*100}%;background:#10b981;`;
-          barContainer.appendChild(onTimeBar);
+    if (performanceChart) {
+      // Update existing chart
+      performanceChart.data.labels = labels;
+      performanceChart.data.datasets[0].data = onTimeData;
+      performanceChart.data.datasets[1].data = lateData;
+      performanceChart.data.datasets[2].data = absentData;
+      performanceChart.update();
+    } else {
+      // Create new chart
+      performanceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'On-time',
+              data: onTimeData,
+              backgroundColor: '#059669',
+              borderRadius: 4
+            },
+            {
+              label: 'Late',
+              data: lateData,
+              backgroundColor: '#f59e0b',
+              borderRadius: 4
+            },
+            {
+              label: 'Absent',
+              data: absentData,
+              backgroundColor: '#9ca3af',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              stacked: true,
+              beginAtZero: true,
+              max: 6,
+              ticks: {
+                stepSize: 1
+              }
+            },
+            y: {
+              stacked: true
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
         }
-        if (p.late > 0) {
-          const lateBar = document.createElement('div');
-          lateBar.style.cssText = `width:${(p.late/total)*100}%;background:#f59e0b;`;
-          barContainer.appendChild(lateBar);
-        }
-        if (p.absent > 0) {
-          const absentBar = document.createElement('div');
-          absentBar.style.cssText = `width:${(p.absent/total)*100}%;background:#d1d5db;`;
-          barContainer.appendChild(absentBar);
-        }
-      }
-
-      row.appendChild(label);
-      row.appendChild(barContainer);
-      container.appendChild(row);
-    });
+      });
+    }
   }
 
   // Performance chart week navigation
-  document.getElementById('perfWeekPrev')?.addEventListener('click', () => {
+  document.getElementById('perfPrevWeek')?.addEventListener('click', () => {
     perfWeekOffset--;
     renderPerformanceChart();
   });
 
-  document.getElementById('perfWeekNext')?.addEventListener('click', () => {
+  document.getElementById('perfNextWeek')?.addEventListener('click', () => {
     perfWeekOffset++;
     renderPerformanceChart();
   });
