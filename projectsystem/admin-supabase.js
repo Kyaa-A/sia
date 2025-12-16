@@ -15,6 +15,7 @@
   let archivedEmployees = [];
   let payslips = [];
   let attendanceChart = null;
+  let leavesSearchQuery = '';
 
   // =============================================
   // DOM ELEMENTS
@@ -459,10 +460,25 @@
     if (!els.leavesTbody) return;
 
     els.leavesTbody.innerHTML = '';
-    const sorted = [...leaveRequests].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    let sorted = [...leaveRequests].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // Filter by search query
+    if (leavesSearchQuery) {
+      const query = leavesSearchQuery.toLowerCase();
+      sorted = sorted.filter(leave => {
+        const emp = leave.employees || {};
+        const empName = (emp.name || '').toLowerCase();
+        const empId = (leave.employee_id || '').toLowerCase();
+        const reason = (leave.reason || '').toLowerCase();
+        const leaveType = (leave.leave_type || '').toLowerCase();
+        const status = (leave.status || '').toLowerCase();
+        return empName.includes(query) || empId.includes(query) || reason.includes(query) || leaveType.includes(query) || status.includes(query);
+      });
+    }
 
     if (sorted.length === 0) {
-      els.leavesTbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#4b5563">No leave requests found</td></tr>';
+      const message = leavesSearchQuery ? 'No matching leave requests found' : 'No leave requests found';
+      els.leavesTbody.innerHTML = `<tr><td colspan="7" style="padding:24px;text-align:center;color:#4b5563">${message}</td></tr>`;
       return;
     }
 
@@ -1322,6 +1338,7 @@
   // =============================================
   let perfWeekOffset = 0;
   let performanceChart = null;
+  let perfSearchQuery = '';
 
   function renderPerformanceChart() {
     const canvas = document.getElementById('employeePerformanceChart');
@@ -1338,8 +1355,19 @@
       labelEl.textContent = formatWeekLabel(weekStart);
     }
 
-    if (employees.length === 0) {
-      if (summaryEl) summaryEl.textContent = '0% average';
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+    // Filter employees by search query
+    const filteredEmployees = perfSearchQuery
+      ? employees.filter(emp =>
+          emp.name.toLowerCase().includes(perfSearchQuery.toLowerCase()) ||
+          emp.id.toLowerCase().includes(perfSearchQuery.toLowerCase())
+        )
+      : employees;
+
+    if (filteredEmployees.length === 0) {
+      if (summaryEl) summaryEl.textContent = perfSearchQuery ? 'No matches' : '0% average';
       if (performanceChart) {
         performanceChart.destroy();
         performanceChart = null;
@@ -1347,11 +1375,8 @@
       return;
     }
 
-    const weekStartStr = weekStart.toISOString().split('T')[0];
-    const weekEndStr = weekEnd.toISOString().split('T')[0];
-
     // Calculate performance for each employee
-    const perfData = employees.map(emp => {
+    const perfData = filteredEmployees.map(emp => {
       const empAttendance = attendance.filter(a =>
         a.employee_id === emp.id &&
         a.date >= weekStartStr &&
@@ -1460,6 +1485,25 @@
   document.getElementById('perfNextWeek')?.addEventListener('click', () => {
     perfWeekOffset++;
     renderPerformanceChart();
+  });
+
+  // Performance chart search
+  document.getElementById('perfSearchInput')?.addEventListener('input', (e) => {
+    perfSearchQuery = e.target.value.trim();
+    renderPerformanceChart();
+  });
+
+  document.getElementById('perfSearchClear')?.addEventListener('click', () => {
+    const input = document.getElementById('perfSearchInput');
+    if (input) input.value = '';
+    perfSearchQuery = '';
+    renderPerformanceChart();
+  });
+
+  // Leaves search
+  document.getElementById('leavesSearch')?.addEventListener('input', (e) => {
+    leavesSearchQuery = e.target.value.trim();
+    renderLeaves();
   });
 
   // =============================================
