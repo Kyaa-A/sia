@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>C4S Payroll - Supabase Data Seeder</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 40px;
+    }
+    h1 { color: #1e3a5f; margin-bottom: 10px; }
+    .subtitle { color: #6b7280; margin-bottom: 30px; }
+    .section {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .section h3 { color: #374151; margin-bottom: 15px; }
+    .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+    button {
+      padding: 12px 24px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover { transform: translateY(-2px); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: linear-gradient(135deg, #1e3a5f, #2d4a6f); color: #fff; }
+    .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+    .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
+    .status {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 8px;
+      display: none;
+    }
+    .status.success { background: #d1fae5; color: #065f46; display: block; }
+    .status.error { background: #fee2e2; color: #991b1b; display: block; }
+    .status.info { background: #dbeafe; color: #1e40af; display: block; }
+    .log {
+      background: #1f2937;
+      color: #10b981;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+      white-space: pre-wrap;
+    }
+    .nav-links {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .nav-links a {
+      display: inline-block;
+      margin-right: 20px;
+      color: #1e3a5f;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .count { background: #e5e7eb; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Supabase Data Seeder</h1>
+    <p class="subtitle">Add sample data to your Supabase database for testing.</p>
+
+    <div class="section">
+      <h3>Current Data Counts</h3>
+      <p>Employees: <span class="count" id="empCount">-</span></p>
+      <p>Attendance Records: <span class="count" id="attCount">-</span></p>
+      <p>Payslips: <span class="count" id="payCount">-</span></p>
+      <p>Leave Requests: <span class="count" id="leaveCount">-</span></p>
+      <br>
+      <button class="btn-primary" onclick="refreshCounts()">Refresh Counts</button>
+    </div>
+
+    <div class="section">
+      <h3>Seed Attendance (2 Weeks)</h3>
+      <p style="color:#6b7280;font-size:14px;margin-bottom:12px;">Creates attendance records for the past 2 weeks for all employees.</p>
+      <div class="btn-group">
+        <button class="btn-success" onclick="seedAttendance()">Seed Attendance</button>
+        <button class="btn-danger" onclick="clearAttendance()">Clear Attendance</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Seed Payslips</h3>
+      <p style="color:#6b7280;font-size:14px;margin-bottom:12px;">Creates payslip records for current and previous week.</p>
+      <div class="btn-group">
+        <button class="btn-success" onclick="seedPayslips()">Seed Payslips</button>
+        <button class="btn-danger" onclick="clearPayslips()">Clear Payslips</button>
+      </div>
+    </div>
+
+    <div class="section" style="background:#ecfdf5;">
+      <h3 style="color:#065f46;">Quick Actions</h3>
+      <div class="btn-group">
+        <button class="btn-success" onclick="seedAll()">Seed All Data</button>
+      </div>
+    </div>
+
+    <div id="statusMessage" class="status"></div>
+    <div id="logOutput" class="log" style="display:none;"></div>
+
+    <div class="nav-links">
+      <strong>Navigate to:</strong>
+      <a href="login.html">Login</a>
+      <a href="admin_dashboard.html">Admin Dashboard</a>
+      <a href="employee_dashboard.html">Employee Dashboard</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script>
+    var logEl = document.getElementById('logOutput');
+
+    function log(msg) {
+      logEl.style.display = 'block';
+      logEl.textContent += new Date().toLocaleTimeString() + ' - ' + msg + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function showStatus(msg, type) {
+      var el = document.getElementById('statusMessage');
+      el.className = 'status ' + type;
+      el.textContent = msg;
+    }
+
+    async function refreshCounts() {
+      try {
+        var { data: emps } = await supabase.from('employees').select('id', { count: 'exact' });
+        var { data: att } = await supabase.from('attendance').select('id', { count: 'exact' });
+        var { data: pay } = await supabase.from('payslips').select('id', { count: 'exact' });
+        var { data: leaves } = await supabase.from('leave_requests').select('id', { count: 'exact' });
+
+        document.getElementById('empCount').textContent = emps ? emps.length : 0;
+        document.getElementById('attCount').textContent = att ? att.length : 0;
+        document.getElementById('payCount').textContent = pay ? pay.length : 0;
+        document.getElementById('leaveCount').textContent = leaves ? leaves.length : 0;
+
+        log('Counts refreshed');
+      } catch (e) {
+        log('Error: ' + e.message);
+      }
+    }
+
+    function getWeekStart(date) {
+      var d = new Date(date);
+      var day = d.getDay();
+      var diff = (day === 0) ? 6 : (day - 1);
+      d.setDate(d.getDate() - diff);
+      return d.toISOString().split('T')[0];
+    }
+
+    async function seedAttendance() {
+      log('Starting attendance seed...');
+      showStatus('Seeding attendance...', 'info');
+
+      try {
+        // Get all employees
+        var { data: employees, error } = await supabase.from('employees').select('*').eq('status', 'active');
+        if (error) throw error;
+
+        if (!employees || employees.length === 0) {
+          showStatus('No employees found! Add employees first.', 'error');
+          return;
+        }
+
+        log('Found ' + employees.length + ' employees');
+
+        var attendance = [];
+        var today = new Date();
+
+        // Generate 2 weeks of attendance (Mon-Sat)
+        for (var week = 0; week < 2; week++) {
+          for (var dayOffset = 0; dayOffset < 6; dayOffset++) {
+            var date = new Date(today);
+            var currentDay = today.getDay() === 0 ? 6 : today.getDay() - 1;
+            date.setDate(date.getDate() - (week * 7) - currentDay + dayOffset);
+
+            // Skip future dates
+            if (date > today) continue;
+
+            var dateStr = date.toISOString().split('T')[0];
+
+            for (var i = 0; i < employees.length; i++) {
+              var emp = employees[i];
+
+              // 10% chance absent
+              if (Math.random() < 0.1) continue;
+
+              // 20% chance late
+              var isLate = Math.random() < 0.2;
+              var timeInHour = isLate ? 8 + Math.floor(Math.random() * 2) : 7;
+              var timeInMin = Math.floor(Math.random() * 60);
+              var timeOutHour = 17 + Math.floor(Math.random() * 2);
+              var timeOutMin = Math.floor(Math.random() * 60);
+
+              var timeIn = new Date(date);
+              timeIn.setHours(timeInHour, timeInMin, 0, 0);
+
+              var timeOut = new Date(date);
+              timeOut.setHours(timeOutHour, timeOutMin, 0, 0);
+
+              var lateMinutes = 0;
+              if (timeInHour > 8 || (timeInHour === 8 && timeInMin > 0)) {
+                lateMinutes = (timeInHour - 8) * 60 + timeInMin;
+              }
+
+              var workedHours = (timeOut - timeIn) / (1000 * 60 * 60);
+
+              attendance.push({
+                employee_id: emp.id,
+                date: dateStr,
+                time_in: timeIn.toISOString(),
+                time_out: timeOut.toISOString(),
+                status: isLate ? 'late' : 'present',
+                late_minutes: lateMinutes,
+                worked_hours: Math.round(workedHours * 100) / 100,
+                payable_hours: Math.min(workedHours, 8)
+              });
+            }
+          }
+        }
+
+        log('Generated ' + attendance.length + ' attendance records');
+
+        // Insert in batches
+        var batchSize = 50;
+        for (var i = 0; i < attendance.length; i += batchSize) {
+          var batch = attendance.slice(i, i + batchSize);
+          var { error: insertError } = await supabase.from('attendance').upsert(batch, { onConflict: 'employee_id,date' });
+          if (insertError) {
+            log('Batch error: ' + insertError.message);
+          } else {
+            log('Inserted batch ' + Math.floor(i/batchSize + 1));
+          }
+        }
+
+        showStatus('Seeded ' + attendance.length + ' attendance records!', 'success');
+        refreshCounts();
+      } catch (e) {
+        log('Error: ' + e.message);
+        showStatus('Error: ' + e.message, 'error');
+      }
+    }
+
+    async function seedPayslips() {
+      log('Starting payslips seed...');
+      showStatus('Seeding payslips...', 'info');
+
+      try {
+        var { data: employees, error } = await supabase.from('employees').select('*').eq('status', 'active');
+        if (error) throw error;
+
+        if (!employees || employees.length === 0) {
+          showStatus('No employees found!', 'error');
+          return;
+        }
+
+        var today = new Date();
+        var payslips = [];
+
+        // Current week and last week
+        for (var week = 0; week < 2; week++) {
+          var weekDate = new Date(today);
+          weekDate.setDate(weekDate.getDate() - (week * 7));
+          var weekStart = getWeekStart(weekDate);
+          var weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+
+          for (var i = 0; i < employees.length; i++) {
+            var emp = employees[i];
+            var weeklySalary = Math.round((emp.salary || 159120) / 52);
+            var sss = emp.sss_deduction || 300;
+            var philhealth = emp.philhealth_deduction || 250;
+            var pagibig = emp.pagibig_deduction || 200;
+            var totalDeductions = sss + philhealth + pagibig;
+            var netPay = weeklySalary - totalDeductions;
+
+            payslips.push({
+              employee_id: emp.id,
+              week_start: weekStart,
+              week_end: weekEnd.toISOString().split('T')[0],
+              gross_pay: weeklySalary,
+              sss: sss,
+              philhealth: philhealth,
+              pagibig: pagibig,
+              late_deduction: 0,
+              total_deductions: totalDeductions,
+              net_pay: netPay,
+              worked_hours: 48,
+              status: 'Approved'
+            });
+          }
+        }
+
+        log('Generated ' + payslips.length + ' payslips');
+
+        var { error: insertError } = await supabase.from('payslips').upsert(payslips, { onConflict: 'employee_id,week_start' });
+        if (insertError) throw insertError;
+
+        showStatus('Seeded ' + payslips.length + ' payslips!', 'success');
+        refreshCounts();
+      } catch (e) {
+        log('Error: ' + e.message);
+        showStatus('Error: ' + e.message, 'error');
+      }
+    }
+
+    async function clearAttendance() {
+      if (!confirm('Delete all attendance records?')) return;
+      try {
+        await supabase.from('attendance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        showStatus('Cleared all attendance!', 'info');
+        refreshCounts();
+      } catch (e) {
+        showStatus('Error: ' + e.message, 'error');
+      }
+    }
+
+    async function clearPayslips() {
+      if (!confirm('Delete all payslips?')) return;
+      try {
+        await supabase.from('payslips').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        showStatus('Cleared all payslips!', 'info');
+        refreshCounts();
+      } catch (e) {
+        showStatus('Error: ' + e.message, 'error');
+      }
+    }
+
+    async function seedAll() {
+      await seedAttendance();
+      await seedPayslips();
+      showStatus('All data seeded successfully!', 'success');
+    }
+
+    // Initialize
+    refreshCounts();
+  </script>
+</body>
+</html>
