@@ -516,9 +516,9 @@
     doc.setFontSize(11);
     doc.text(currentEmployee.id, pageWidth / 2, y, { align: 'center' });
 
-    // Rate per day (weekly salary / 6 working days)
+    // Rate per day (annual salary / 52 weeks / 6 days)
     y += 10;
-    const dailyRate = currentEmployee.salary ? (currentEmployee.salary / 6) : 0;
+    const dailyRate = currentEmployee.salary ? (currentEmployee.salary / 52 / 6) : 0;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });
