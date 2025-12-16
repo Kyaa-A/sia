@@ -472,7 +472,6 @@
   function generatePDF(payslip, logoImg) {
     const { jsPDF } = window.jspdf;
     // Receipt size: half of A4 height (portrait), width stays same
-    // A4 is 210 x 297mm, so half lengthwise is 210 x 148mm
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -480,7 +479,7 @@
     });
 
     const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 15;
+    let y = 18;
 
     // Format week dates nicely (Dec 15 - 21)
     const startDate = new Date(payslip.week_start);
@@ -489,47 +488,47 @@
     const weekLabel = `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
 
     // Header
-    doc.setFontSize(12);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('PAYROLL - PAYSLIP', pageWidth / 2, y, { align: 'center' });
 
-    y += 5;
-    doc.setFontSize(9);
+    y += 6;
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     doc.text(`Week: ${weekLabel}`, pageWidth / 2, y, { align: 'center' });
 
     // Company logo (top right)
     if (logoImg) {
       try {
-        doc.addImage(logoImg, 'PNG', pageWidth - 40, 8, 30, 17);
+        doc.addImage(logoImg, 'PNG', pageWidth - 45, 10, 35, 18);
       } catch (e) {
         console.log('Could not add logo to PDF');
       }
     }
 
     // Employee info
-    y += 8;
-    doc.setFontSize(10);
+    y += 12;
+    doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.text(currentEmployee.name, pageWidth / 2, y, { align: 'center' });
-    y += 4;
+    y += 6;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(11);
     doc.text(currentEmployee.id, pageWidth / 2, y, { align: 'center' });
 
     // Rate per day (weekly salary / 6 working days)
-    y += 8;
+    y += 10;
     const dailyRate = currentEmployee.salary ? (currentEmployee.salary / 6) : 0;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(11);
     doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });
 
     // Table
-    y += 8;
-    const tableX = 25;
-    const tableWidth = pageWidth - 50;
-    const col1Width = tableWidth - 35;
-    const rowHeight = 7;
+    y += 10;
+    const tableX = 30;
+    const tableWidth = pageWidth - 60;
+    const col1Width = tableWidth - 45;
+    const rowHeight = 9;
 
     // Draw table rows
     const rows = [
@@ -544,7 +543,7 @@
     ];
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(11);
 
     const tableStartY = y;
 
@@ -554,8 +553,8 @@
 
       // Draw text
       doc.setFont('helvetica', index >= 6 ? 'bold' : 'normal');
-      doc.text(row[0], tableX + 2, y + 5);
-      doc.text(row[1], tableX + tableWidth - 2, y + 5, { align: 'right' });
+      doc.text(row[0], tableX + 3, y + 6.5);
+      doc.text(row[1], tableX + tableWidth - 3, y + 6.5, { align: 'right' });
 
       y += rowHeight;
     });
@@ -570,12 +569,12 @@
     doc.line(tableX + col1Width, tableStartY, tableX + col1Width, y);
 
     // Footer (centered)
-    y += 10;
+    y += 12;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(10);
     doc.text('Received by: _____________________', pageWidth / 2, y, { align: 'center' });
-    y += 6;
-    doc.setFontSize(8);
+    y += 8;
+    doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, pageWidth / 2, y, { align: 'center' });
 
     // Download
