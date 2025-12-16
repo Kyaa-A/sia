@@ -558,6 +558,7 @@
       await loadAllData();
       renderSalarySlips();
       updateHomeStats();
+      renderSidePayslipList();
     } catch (err) {
       console.error('Error approving payslip:', err);
       if (window.toastError) toastError('Error', err.message || 'Failed to approve payslip');
@@ -571,6 +572,7 @@
       await loadAllData();
       renderSalarySlips();
       updateHomeStats();
+      renderSidePayslipList();
     } catch (err) {
       console.error('Error rejecting payslip:', err);
       if (window.toastError) toastError('Error', err.message || 'Failed to reject payslip');
