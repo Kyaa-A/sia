@@ -326,7 +326,7 @@
 
     if (sorted.length === 0) {
       els.attendanceTbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#6b7280">No attendance records for this week</td></tr>';
-      updateAttendancePagination(0, 0);
+      updateAttendancePagination(0, 0, 0);
       return;
     }
 
@@ -371,7 +371,7 @@
       els.attendanceTbody.appendChild(tr);
     });
 
-    updateAttendancePagination(attendancePage, totalPages);
+    updateAttendancePagination(attendancePage, totalPages, sorted.length);
   }
 
   // Attendance week navigation
@@ -387,14 +387,25 @@
     renderAttendance();
   });
 
-  function updateAttendancePagination(current, total) {
+  function updateAttendancePagination(current, total, recordCount) {
     const indicator = document.getElementById('attendancePageIndicator');
     const prevBtn = document.getElementById('attendancePrev');
     const nextBtn = document.getElementById('attendanceNext');
+    const countEl = document.getElementById('attendanceRecordCount');
 
-    if (indicator) indicator.textContent = current;
+    // Handle empty state
+    if (total === 0) {
+      if (indicator) indicator.textContent = '0 / 0';
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      if (countEl) countEl.textContent = 'No records';
+      return;
+    }
+
+    if (indicator) indicator.textContent = `${current} / ${total}`;
     if (prevBtn) prevBtn.disabled = current <= 1;
     if (nextBtn) nextBtn.disabled = current >= total;
+    if (countEl) countEl.textContent = `${recordCount || 0} record${recordCount !== 1 ? 's' : ''}`;
   }
 
   function renderArchive() {
