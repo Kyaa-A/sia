@@ -609,13 +609,13 @@
 
     // Setup event listeners if not already setup
     if (!employeeSelect.dataset.listenersAttached) {
-      employeeSelect.addEventListener('change', calculatePayroll);
-      weekSelect.addEventListener('change', calculatePayroll);
+      employeeSelect.addEventListener('change', () => calculatePayroll(true));
+      weekSelect.addEventListener('change', () => calculatePayroll(true));
 
       const lateHoursInput = document.getElementById('payrollInlineLateHours');
       const lateMinutesInput = document.getElementById('payrollInlineLateMinutes');
-      if (lateHoursInput) lateHoursInput.addEventListener('input', calculatePayroll);
-      if (lateMinutesInput) lateMinutesInput.addEventListener('input', calculatePayroll);
+      if (lateHoursInput) lateHoursInput.addEventListener('input', () => calculatePayroll(false));
+      if (lateMinutesInput) lateMinutesInput.addEventListener('input', () => calculatePayroll(false));
 
       const confirmBtn = document.getElementById('payrollInlineConfirm');
       const cancelBtn = document.getElementById('payrollInlineCancel');
@@ -672,7 +672,7 @@
     if (els.lateMinutes) els.lateMinutes.value = '0';
   }
 
-  function calculatePayroll() {
+  function calculatePayroll(autoPopulateLate = true) {
     const employeeSelect = document.getElementById('payrollInlineEmployeeSelect');
     const weekSelect = document.getElementById('payrollInlineWeekSelect');
     const employeeId = employeeSelect?.value;
@@ -710,16 +710,22 @@
     const pagibig = emp.pagibig_deduction || 200;
     const statutoryDeductions = sss + philhealth + pagibig;
 
-    // Auto-populate late hours/minutes from attendance data
-    const attendanceLateHours = Math.floor(totalLateMinutes / 60);
-    const attendanceLateMinutes = totalLateMinutes % 60;
+    // Get late input elements
     const lateHoursInput = document.getElementById('payrollInlineLateHours');
     const lateMinutesInput = document.getElementById('payrollInlineLateMinutes');
-    if (lateHoursInput) lateHoursInput.value = attendanceLateHours;
-    if (lateMinutesInput) lateMinutesInput.value = attendanceLateMinutes;
 
-    // Use the displayed late values for calculation
-    const totalLateMins = totalLateMinutes;
+    // Auto-populate late hours/minutes from attendance data when employee/week changes
+    if (autoPopulateLate) {
+      const attendanceLateHours = Math.floor(totalLateMinutes / 60);
+      const attendanceLateMinutes = totalLateMinutes % 60;
+      if (lateHoursInput) lateHoursInput.value = attendanceLateHours;
+      if (lateMinutesInput) lateMinutesInput.value = attendanceLateMinutes;
+    }
+
+    // Use the current input values for calculation (allows manual override)
+    const lateHours = parseFloat(lateHoursInput?.value) || 0;
+    const lateMinutes = parseFloat(lateMinutesInput?.value) || 0;
+    const totalLateMins = (lateHours * 60) + lateMinutes;
 
     // Late deduction (hourly rate = daily rate / 8)
     const hourlyRate = dailyRate / 8;

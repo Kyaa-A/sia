@@ -460,79 +460,105 @@
     const doc = new jsPDF();
 
     const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 20;
+    let y = 25;
+
+    // Format week dates nicely (Dec 15 - 21)
+    const startDate = new Date(payslip.week_start);
+    const endDate = new Date(payslip.week_end);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const weekLabel = `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
 
     // Header
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('PAYROLL - PAYSLIP', pageWidth / 2, y, { align: 'center' });
 
-    y += 8;
-    doc.setFontSize(11);
+    y += 6;
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Week: ${payslip.week_start} - ${payslip.week_end}`, pageWidth / 2, y, { align: 'center' });
+    doc.text(`Week: ${weekLabel}`, pageWidth / 2, y, { align: 'center' });
 
     // Company logo placeholder (top right)
-    doc.setFontSize(10);
-    doc.text('C4S', pageWidth - 25, 15);
-    doc.setFontSize(7);
-    doc.text('FOOD SOLUTION', pageWidth - 30, 20);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 128, 0);
+    doc.text('C4S', pageWidth - 30, 20);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text('FOOD SOLUTION', pageWidth - 35, 25);
+    doc.setTextColor(0, 0, 0);
 
     // Employee info
-    y += 12;
+    y += 10;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.text(currentEmployee.name, pageWidth / 2, y, { align: 'center' });
-    y += 6;
+    y += 5;
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
     doc.text(currentEmployee.id, pageWidth / 2, y, { align: 'center' });
 
-    // Rate per day
-    y += 12;
-    const dailyRate = currentEmployee.salary ? (currentEmployee.salary / 6).toFixed(2) : '0.00';
+    // Rate per day (weekly salary / 6 working days)
+    y += 10;
+    const dailyRate = currentEmployee.salary ? (currentEmployee.salary / 6) : 0;
     doc.setFont('helvetica', 'bold');
-    doc.text(`Rate/day: P${Number(dailyRate).toLocaleString()}`, pageWidth / 2, y, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });
 
     // Table
-    y += 15;
-    const tableX = 30;
-    const tableWidth = pageWidth - 60;
-    const col2X = tableX + tableWidth - 40;
+    y += 12;
+    const tableX = 40;
+    const tableWidth = pageWidth - 80;
+    const col1Width = tableWidth - 50;
+    const rowHeight = 10;
 
     // Draw table rows
     const rows = [
       ['Worked Hours (actual)', `${payslip.worked_hours || 0} h`],
       ['Payable Hours (capped)', `${payslip.payable_hours || 0} h`],
       ['Late', `${Math.floor((payslip.late_minutes || 0) / 60)}h ${(payslip.late_minutes || 0) % 60}m`],
-      ['SSS', `P${Number(payslip.sss || 300).toLocaleString()}`],
-      ['PhilHealth', `P${Number(payslip.philhealth || 250).toLocaleString()}`],
-      ['Pag-IBIG', `P${Number(payslip.pagibig || 200).toLocaleString()}`],
-      ['Gross (week)', `P${Number(payslip.gross_pay || 0).toLocaleString()}`],
-      ['Net (week)', `P${Number(payslip.net_pay || 0).toLocaleString()}`]
+      ['SSS', `P${Number(payslip.sss || 300)}`],
+      ['PhilHealth', `P${Number(payslip.philhealth || 250)}`],
+      ['Pag-IBIG', `P${Number(payslip.pagibig || 200)}`],
+      ['Gross (week)', `P${Number(payslip.gross_pay || 0)}`],
+      ['Net (week)', `P${Number(payslip.net_pay || 0)}`]
     ];
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
 
-    rows.forEach(row => {
+    const tableStartY = y;
+
+    rows.forEach((row, index) => {
+      // Row background alternating (optional, skip for clean look)
+      // Draw horizontal line at top of row
       doc.line(tableX, y, tableX + tableWidth, y);
-      y += 8;
-      doc.text(row[0], tableX + 3, y - 2);
-      doc.text(row[1], col2X, y - 2, { align: 'right' });
+
+      // Draw text
+      doc.setFont('helvetica', index >= 6 ? 'bold' : 'normal');
+      doc.text(row[0], tableX + 3, y + 7);
+      doc.text(row[1], tableX + tableWidth - 3, y + 7, { align: 'right' });
+
+      y += rowHeight;
     });
+
+    // Bottom line
     doc.line(tableX, y, tableX + tableWidth, y);
 
-    // Draw vertical lines
-    doc.line(tableX, y - (rows.length * 8), tableX, y);
-    doc.line(tableX + tableWidth, y - (rows.length * 8), tableX + tableWidth, y);
-    doc.line(col2X - 10, y - (rows.length * 8), col2X - 10, y);
+    // Left and right vertical lines
+    doc.line(tableX, tableStartY, tableX, y);
+    doc.line(tableX + tableWidth, tableStartY, tableX + tableWidth, y);
+    // Middle vertical line
+    doc.line(tableX + col1Width, tableStartY, tableX + col1Width, y);
 
-    // Footer
-    y += 20;
-    doc.text('Received by: _______________________', tableX, y);
+    // Footer (centered)
+    y += 18;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Received by: _____________________', pageWidth / 2, y, { align: 'center' });
     y += 10;
     doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, tableX, y);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, pageWidth / 2, y, { align: 'center' });
 
     // Download
     doc.save(`payslip_${currentEmployee.name.replace(/\s+/g, '_')}_${payslip.week_start}.pdf`);
