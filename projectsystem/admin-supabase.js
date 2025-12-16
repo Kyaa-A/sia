@@ -406,16 +406,24 @@
 
     // Handle empty state
     if (total === 0 || recordCount === 0) {
-      if (indicator) indicator.textContent = '0 / 0';
-      if (prevBtn) prevBtn.disabled = true;
-      if (nextBtn) nextBtn.disabled = true;
+      if (indicator) indicator.style.display = 'none';
+      if (prevBtn) prevBtn.style.display = 'none';
+      if (nextBtn) nextBtn.style.display = 'none';
       if (countEl) countEl.textContent = 'No records';
       return;
     }
 
-    if (indicator) indicator.textContent = `${current} / ${total}`;
-    if (prevBtn) prevBtn.disabled = current <= 1;
-    if (nextBtn) nextBtn.disabled = current >= total;
+    // Hide pagination controls if only 1 page
+    if (total <= 1) {
+      if (indicator) indicator.style.display = 'none';
+      if (prevBtn) prevBtn.style.display = 'none';
+      if (nextBtn) nextBtn.style.display = 'none';
+    } else {
+      if (indicator) { indicator.style.display = ''; indicator.textContent = `${current} / ${total}`; }
+      if (prevBtn) { prevBtn.style.display = ''; prevBtn.disabled = current <= 1; }
+      if (nextBtn) { nextBtn.style.display = ''; nextBtn.disabled = current >= total; }
+    }
+
     if (countEl) countEl.textContent = `Showing ${rangeStart}-${rangeEnd} of ${recordCount}`;
   }
 
