@@ -181,12 +181,16 @@
     <div id="attendance" class="section-content">
       <div class="card section attendance-card">
         <h2>Attendance Records</h2>
-        <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:12px">
             <label style="font-weight:600;color:#374151">Search:</label>
             <input id="attendanceSearch" class="search" placeholder="Type employee name or ID to filter" />
           </div>
-          <div id="attendanceWeekRange" style="font-weight:600;color:#374151"></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button id="attWeekPrev" class="secondary" style="padding:6px 12px">◀ Prev</button>
+            <div id="attendanceWeekRange" style="font-weight:600;color:#374151;min-width:140px;text-align:center">—</div>
+            <button id="attWeekNext" class="secondary" style="padding:6px 12px">Next ▶</button>
+          </div>
         </div>
         <!-- Table wrapper: only the table scrolls now -->
         <div class="attendance-table-wrapper" style="max-height:520px;overflow:auto">

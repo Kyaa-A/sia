@@ -278,18 +278,36 @@
     if (countEl) countEl.textContent = filtered.length;
   }
 
-  // Attendance pagination state
+  // Attendance pagination and week filter state
   let attendancePage = 1;
   const attendancePerPage = 15;
   let attendanceSearchQuery = '';
+  let attendanceWeekOffset = 0;
 
   function renderAttendance() {
     if (!els.attendanceTbody) return;
 
     els.attendanceTbody.innerHTML = '';
 
+    // Get the selected week range
+    const weekStart = getOffsetWeekStart(attendanceWeekOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+    // Update week label
+    const weekRangeEl = document.getElementById('attendanceWeekRange');
+    if (weekRangeEl) {
+      weekRangeEl.textContent = formatWeekLabel(weekStart);
+    }
+
+    // Filter by week
+    let filtered = attendance.filter(att => {
+      return att.date >= weekStartStr && att.date <= weekEndStr;
+    });
+
     // Filter by search query
-    let filtered = [...attendance];
     if (attendanceSearchQuery) {
       const query = attendanceSearchQuery.toLowerCase();
       filtered = filtered.filter(att => {
@@ -299,11 +317,15 @@
       });
     }
 
-    // Sort by date descending
-    const sorted = filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Sort by date descending, then by time
+    const sorted = filtered.sort((a, b) => {
+      const dateCompare = new Date(b.date) - new Date(a.date);
+      if (dateCompare !== 0) return dateCompare;
+      return new Date(b.time_in || 0) - new Date(a.time_in || 0);
+    });
 
     if (sorted.length === 0) {
-      els.attendanceTbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#6b7280">No attendance records found</td></tr>';
+      els.attendanceTbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#6b7280">No attendance records for this week</td></tr>';
       updateAttendancePagination(0, 0);
       return;
     }
@@ -321,17 +343,29 @@
       const workedHours = att.worked_hours !== null && att.worked_hours !== undefined
         ? att.worked_hours.toFixed(1) + 'h'
         : (att.time_out ? '0h' : '—');
+
+      // Calculate payable hours (max 8h per day)
+      const payableHours = att.payable_hours !== null && att.payable_hours !== undefined
+        ? att.payable_hours.toFixed(1) + 'h'
+        : '—';
+
       const statusClass = att.late_minutes > 0 ? 'color:#f59e0b' : 'color:#10b981';
       const statusText = att.late_minutes > 0 ? `Late (${att.late_minutes}m)` : 'On Time';
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${att.date}</td>
-        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${emp.name || '—'}</td>
-        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${att.employee_id}</td>
-        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${att.time_in ? new Date(att.time_in).toLocaleTimeString() : '—'}</td>
-        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${att.time_out ? new Date(att.time_out).toLocaleTimeString() : '—'}</td>
-        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${workedHours}</td>
+        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">
+          <div style="font-weight:600">${emp.name || '—'}</div>
+          <div style="font-size:12px;color:#6b7280">${att.employee_id}</div>
+        </td>
+        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee;font-size:12px;color:#6b7280">${att.id ? att.id.substring(0, 8) + '...' : '—'}</td>
+        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${att.time_in ? new Date(att.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'}</td>
+        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${att.time_out ? new Date(att.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'}</td>
+        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">
+          <div>${workedHours}</div>
+          <div style="font-size:11px;color:#6b7280">paid: ${payableHours}</div>
+        </td>
         <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee;${statusClass};font-weight:600">${statusText}</td>
       `;
       els.attendanceTbody.appendChild(tr);
@@ -339,6 +373,19 @@
 
     updateAttendancePagination(attendancePage, totalPages);
   }
+
+  // Attendance week navigation
+  document.getElementById('attWeekPrev')?.addEventListener('click', () => {
+    attendanceWeekOffset--;
+    attendancePage = 1;
+    renderAttendance();
+  });
+
+  document.getElementById('attWeekNext')?.addEventListener('click', () => {
+    attendanceWeekOffset++;
+    attendancePage = 1;
+    renderAttendance();
+  });
 
   function updateAttendancePagination(current, total) {
     const indicator = document.getElementById('attendancePageIndicator');
