@@ -13,7 +13,7 @@
       padding: 40px 20px;
     }
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       background: #fff;
       border-radius: 16px;
@@ -28,7 +28,7 @@
       padding: 20px;
       margin-bottom: 20px;
     }
-    .section h3 { color: #374151; margin-bottom: 15px; }
+    .section h3 { color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
     .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
     button {
       padding: 12px 24px;
@@ -43,6 +43,7 @@
     .btn-primary { background: linear-gradient(135deg, #1e3a5f, #2d4a6f); color: #fff; }
     .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
     .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
+    .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
     .status {
       margin-top: 20px;
       padding: 16px;
@@ -77,6 +78,33 @@
       font-weight: 500;
     }
     .count { background: #e5e7eb; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin-left: 8px; }
+    .credentials-box {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 15px;
+    }
+    .credentials-box h4 { color: #92400e; margin-bottom: 10px; }
+    .credentials-box code {
+      background: #fff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    th { background: #f3f4f6; font-weight: 600; color: #374151; }
+    tr:hover td { background: #f9fafb; }
   </style>
 </head>
 <body>
@@ -92,6 +120,61 @@
       <p>Leave Requests: <span class="count" id="leaveCount">-</span></p>
       <br>
       <button class="btn-primary" onclick="refreshCounts()">Refresh Counts</button>
+    </div>
+
+    <div class="section" style="background: #fef3c7;">
+      <h3 style="color: #92400e;">Seed Test Employees</h3>
+      <p style="color:#78716c;font-size:14px;margin-bottom:12px;">Creates 5 sample employees with login credentials for testing.</p>
+      <div class="btn-group">
+        <button class="btn-warning" onclick="seedEmployees()">Seed 5 Test Employees</button>
+        <button class="btn-danger" onclick="clearEmployees()">Clear All Employees</button>
+      </div>
+
+      <div class="credentials-box">
+        <h4>Test Employee Credentials (after seeding)</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Username</th>
+              <th>Password</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Maria Santos</td>
+              <td>Cashier</td>
+              <td><code>maria.santos</code></td>
+              <td><code>test123</code></td>
+            </tr>
+            <tr>
+              <td>Juan Cruz</td>
+              <td>Delivery Driver</td>
+              <td><code>juan.cruz</code></td>
+              <td><code>test123</code></td>
+            </tr>
+            <tr>
+              <td>Ana Reyes</td>
+              <td>Packer</td>
+              <td><code>ana.reyes</code></td>
+              <td><code>test123</code></td>
+            </tr>
+            <tr>
+              <td>Pedro Garcia</td>
+              <td>Warehouse Staff</td>
+              <td><code>pedro.garcia</code></td>
+              <td><code>test123</code></td>
+            </tr>
+            <tr>
+              <td>Rosa Martinez</td>
+              <td>Manager</td>
+              <td><code>rosa.martinez</code></td>
+              <td><code>test123</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="section">
@@ -112,10 +195,20 @@
       </div>
     </div>
 
+    <div class="section">
+      <h3>Seed Leave Requests</h3>
+      <p style="color:#6b7280;font-size:14px;margin-bottom:12px;">Creates sample leave requests for all employees.</p>
+      <div class="btn-group">
+        <button class="btn-success" onclick="seedLeaveRequests()">Seed Leave Requests</button>
+        <button class="btn-danger" onclick="clearLeaveRequests()">Clear Leave Requests</button>
+      </div>
+    </div>
+
     <div class="section" style="background:#ecfdf5;">
       <h3 style="color:#065f46;">Quick Actions</h3>
       <div class="btn-group">
         <button class="btn-success" onclick="seedAll()">Seed All Data</button>
+        <button class="btn-danger" onclick="clearAll()">Clear All Data</button>
       </div>
     </div>
 
@@ -134,6 +227,75 @@
   <script src="supabase-config.js"></script>
   <script>
     var logEl = document.getElementById('logOutput');
+
+    // Test employees data
+    var testEmployees = [
+      {
+        id: '1001',
+        name: 'Maria Santos',
+        email: 'maria.santos@c4s.com',
+        username: 'maria.santos',
+        password_hash: 'test123',
+        role: 'Cashier',
+        salary: 159120,
+        sss_deduction: 300,
+        philhealth_deduction: 250,
+        pagibig_deduction: 200,
+        status: 'active'
+      },
+      {
+        id: '1002',
+        name: 'Juan Cruz',
+        email: 'juan.cruz@c4s.com',
+        username: 'juan.cruz',
+        password_hash: 'test123',
+        role: 'Delivery Driver',
+        salary: 159120,
+        sss_deduction: 300,
+        philhealth_deduction: 250,
+        pagibig_deduction: 200,
+        status: 'active'
+      },
+      {
+        id: '1003',
+        name: 'Ana Reyes',
+        email: 'ana.reyes@c4s.com',
+        username: 'ana.reyes',
+        password_hash: 'test123',
+        role: 'Packer',
+        salary: 159120,
+        sss_deduction: 300,
+        philhealth_deduction: 250,
+        pagibig_deduction: 200,
+        status: 'active'
+      },
+      {
+        id: '1004',
+        name: 'Pedro Garcia',
+        email: 'pedro.garcia@c4s.com',
+        username: 'pedro.garcia',
+        password_hash: 'test123',
+        role: 'Warehouse Staff',
+        salary: 159120,
+        sss_deduction: 300,
+        philhealth_deduction: 250,
+        pagibig_deduction: 200,
+        status: 'active'
+      },
+      {
+        id: '1005',
+        name: 'Rosa Martinez',
+        email: 'rosa.martinez@c4s.com',
+        username: 'rosa.martinez',
+        password_hash: 'test123',
+        role: 'Manager',
+        salary: 200000,
+        sss_deduction: 400,
+        philhealth_deduction: 300,
+        pagibig_deduction: 200,
+        status: 'active'
+      }
+    ];
 
     function log(msg) {
       logEl.style.display = 'block';
@@ -173,6 +335,61 @@
       return d.toISOString().split('T')[0];
     }
 
+    // Seed Employees
+    async function seedEmployees() {
+      log('Starting employee seed...');
+      showStatus('Seeding employees...', 'info');
+
+      try {
+        var added = 0;
+        for (var i = 0; i < testEmployees.length; i++) {
+          var emp = testEmployees[i];
+
+          // Check if employee already exists
+          var { data: existing } = await supabase
+            .from('employees')
+            .select('id')
+            .or(`id.eq.${emp.id},username.eq.${emp.username},email.eq.${emp.email}`)
+            .limit(1);
+
+          if (existing && existing.length > 0) {
+            log('Employee ' + emp.name + ' already exists, skipping');
+            continue;
+          }
+
+          var { error } = await supabase.from('employees').insert(emp);
+          if (error) {
+            log('Error adding ' + emp.name + ': ' + error.message);
+          } else {
+            log('Added: ' + emp.name + ' (' + emp.role + ')');
+            added++;
+          }
+        }
+
+        showStatus('Seeded ' + added + ' test employees!', 'success');
+        refreshCounts();
+      } catch (e) {
+        log('Error: ' + e.message);
+        showStatus('Error: ' + e.message, 'error');
+      }
+    }
+
+    async function clearEmployees() {
+      if (!confirm('Delete ALL employees? This will also delete all related attendance, payslips, and leave requests!')) return;
+      try {
+        // Delete in order due to foreign keys
+        await supabase.from('payslips').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('attendance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('leave_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('employees').delete().neq('id', 'ADMIN');
+        showStatus('Cleared all employees and related data!', 'info');
+        refreshCounts();
+      } catch (e) {
+        log('Error: ' + e.message);
+        showStatus('Error: ' + e.message, 'error');
+      }
+    }
+
     async function seedAttendance() {
       log('Starting attendance seed...');
       showStatus('Seeding attendance...', 'info');
@@ -183,7 +400,7 @@
         if (error) throw error;
 
         if (!employees || employees.length === 0) {
-          showStatus('No employees found! Add employees first.', 'error');
+          showStatus('No employees found! Seed employees first.', 'error');
           return;
         }
 
@@ -275,7 +492,7 @@
         if (error) throw error;
 
         if (!employees || employees.length === 0) {
-          showStatus('No employees found!', 'error');
+          showStatus('No employees found! Seed employees first.', 'error');
           return;
         }
 
@@ -329,6 +546,66 @@
       }
     }
 
+    async function seedLeaveRequests() {
+      log('Starting leave requests seed...');
+      showStatus('Seeding leave requests...', 'info');
+
+      try {
+        var { data: employees, error } = await supabase.from('employees').select('*').eq('status', 'active');
+        if (error) throw error;
+
+        if (!employees || employees.length === 0) {
+          showStatus('No employees found! Seed employees first.', 'error');
+          return;
+        }
+
+        var leaveTypes = ['Casual Leave', 'Medical / Sick Leave', 'Maternity Leave', 'Emergency Leave'];
+        var statuses = ['Pending', 'Approved', 'Rejected'];
+        var reasons = [
+          'Personal appointment',
+          'Family event',
+          'Medical checkup',
+          'Vacation',
+          'Emergency situation'
+        ];
+
+        var leaves = [];
+        var today = new Date();
+
+        for (var i = 0; i < employees.length; i++) {
+          var emp = employees[i];
+          var numLeaves = 1 + Math.floor(Math.random() * 2); // 1-2 leave requests per employee
+
+          for (var j = 0; j < numLeaves; j++) {
+            var startDate = new Date(today);
+            startDate.setDate(startDate.getDate() + Math.floor(Math.random() * 14) - 7); // -7 to +7 days
+            var endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + Math.floor(Math.random() * 3) + 1); // 1-3 days
+
+            leaves.push({
+              employee_id: emp.id,
+              leave_type: leaveTypes[Math.floor(Math.random() * leaveTypes.length)],
+              start_date: startDate.toISOString().split('T')[0],
+              end_date: endDate.toISOString().split('T')[0],
+              reason: reasons[Math.floor(Math.random() * reasons.length)],
+              status: statuses[Math.floor(Math.random() * statuses.length)]
+            });
+          }
+        }
+
+        log('Generated ' + leaves.length + ' leave requests');
+
+        var { error: insertError } = await supabase.from('leave_requests').insert(leaves);
+        if (insertError) throw insertError;
+
+        showStatus('Seeded ' + leaves.length + ' leave requests!', 'success');
+        refreshCounts();
+      } catch (e) {
+        log('Error: ' + e.message);
+        showStatus('Error: ' + e.message, 'error');
+      }
+    }
+
     async function clearAttendance() {
       if (!confirm('Delete all attendance records?')) return;
       try {
@@ -351,10 +628,39 @@
       }
     }
 
+    async function clearLeaveRequests() {
+      if (!confirm('Delete all leave requests?')) return;
+      try {
+        await supabase.from('leave_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        showStatus('Cleared all leave requests!', 'info');
+        refreshCounts();
+      } catch (e) {
+        showStatus('Error: ' + e.message, 'error');
+      }
+    }
+
     async function seedAll() {
+      await seedEmployees();
       await seedAttendance();
       await seedPayslips();
+      await seedLeaveRequests();
       showStatus('All data seeded successfully!', 'success');
+    }
+
+    async function clearAll() {
+      if (!confirm('Delete ALL data (employees, attendance, payslips, leave requests)?')) return;
+      try {
+        await supabase.from('payslips').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('attendance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('leave_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('archived_employees').delete().neq('id', 'ADMIN');
+        await supabase.from('employees').delete().neq('id', 'ADMIN');
+        showStatus('Cleared all data!', 'info');
+        refreshCounts();
+      } catch (e) {
+        log('Error: ' + e.message);
+        showStatus('Error: ' + e.message, 'error');
+      }
     }
 
     // Initialize
