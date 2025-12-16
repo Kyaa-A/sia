@@ -1179,7 +1179,8 @@
       return;
     }
 
-    const weekStartStr = weekStart.toISOString().split('T')[0];
+    // Format date in local timezone (avoid UTC conversion issues)
+    const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
 
     employees.forEach(emp => {
       const empPayslip = payslips.find(p =>
