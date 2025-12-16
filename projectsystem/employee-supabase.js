@@ -236,7 +236,10 @@
         <td>₱${Number(payslip.gross_pay).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
         <td>₱${Number(payslip.net_pay).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
         <td><span class="badge ${statusClass}">${payslip.status}</span></td>
-        <td><button class="secondary" onclick="viewPayslip('${payslip.id}')">View</button></td>
+        <td style="display:flex;gap:6px">
+          <button class="secondary" onclick="viewPayslip('${payslip.id}')">View</button>
+          <button style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer" onclick="downloadPayslipPDF('${payslip.id}')">Download</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -445,6 +448,95 @@
     const modal = document.getElementById('payslipModal');
     if (modal) modal.style.display = 'none';
   }
+
+  // =============================================
+  // PDF DOWNLOAD
+  // =============================================
+  window.downloadPayslipPDF = function(id) {
+    const payslip = payslips.find(p => p.id === id);
+    if (!payslip) return;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    // Header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAYROLL - PAYSLIP', pageWidth / 2, y, { align: 'center' });
+
+    y += 8;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Week: ${payslip.week_start} - ${payslip.week_end}`, pageWidth / 2, y, { align: 'center' });
+
+    // Company logo placeholder (top right)
+    doc.setFontSize(10);
+    doc.text('C4S', pageWidth - 25, 15);
+    doc.setFontSize(7);
+    doc.text('FOOD SOLUTION', pageWidth - 30, 20);
+
+    // Employee info
+    y += 12;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(currentEmployee.name, pageWidth / 2, y, { align: 'center' });
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.text(currentEmployee.id, pageWidth / 2, y, { align: 'center' });
+
+    // Rate per day
+    y += 12;
+    const dailyRate = currentEmployee.salary ? (currentEmployee.salary / 6).toFixed(2) : '0.00';
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Rate/day: P${Number(dailyRate).toLocaleString()}`, pageWidth / 2, y, { align: 'center' });
+
+    // Table
+    y += 15;
+    const tableX = 30;
+    const tableWidth = pageWidth - 60;
+    const col2X = tableX + tableWidth - 40;
+
+    // Draw table rows
+    const rows = [
+      ['Worked Hours (actual)', `${payslip.worked_hours || 0} h`],
+      ['Payable Hours (capped)', `${payslip.payable_hours || 0} h`],
+      ['Late', `${Math.floor((payslip.late_minutes || 0) / 60)}h ${(payslip.late_minutes || 0) % 60}m`],
+      ['SSS', `P${Number(payslip.sss || 300).toLocaleString()}`],
+      ['PhilHealth', `P${Number(payslip.philhealth || 250).toLocaleString()}`],
+      ['Pag-IBIG', `P${Number(payslip.pagibig || 200).toLocaleString()}`],
+      ['Gross (week)', `P${Number(payslip.gross_pay || 0).toLocaleString()}`],
+      ['Net (week)', `P${Number(payslip.net_pay || 0).toLocaleString()}`]
+    ];
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+
+    rows.forEach(row => {
+      doc.line(tableX, y, tableX + tableWidth, y);
+      y += 8;
+      doc.text(row[0], tableX + 3, y - 2);
+      doc.text(row[1], col2X, y - 2, { align: 'right' });
+    });
+    doc.line(tableX, y, tableX + tableWidth, y);
+
+    // Draw vertical lines
+    doc.line(tableX, y - (rows.length * 8), tableX, y);
+    doc.line(tableX + tableWidth, y - (rows.length * 8), tableX + tableWidth, y);
+    doc.line(col2X - 10, y - (rows.length * 8), col2X - 10, y);
+
+    // Footer
+    y += 20;
+    doc.text('Received by: _______________________', tableX, y);
+    y += 10;
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, tableX, y);
+
+    // Download
+    doc.save(`payslip_${currentEmployee.name.replace(/\s+/g, '_')}_${payslip.week_start}.pdf`);
+  };
 
   // =============================================
   // LOGOUT

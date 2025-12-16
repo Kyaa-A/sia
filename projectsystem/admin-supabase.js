@@ -710,11 +710,16 @@
     const pagibig = emp.pagibig_deduction || 200;
     const statutoryDeductions = sss + philhealth + pagibig;
 
-    // Get late deduction input
-    const lateHours = parseFloat(document.getElementById('payrollInlineLateHours')?.value) || 0;
-    const lateMinutes = parseFloat(document.getElementById('payrollInlineLateMinutes')?.value) || 0;
-    const manualLateMins = (lateHours * 60) + lateMinutes;
-    const totalLateMins = totalLateMinutes + manualLateMins;
+    // Auto-populate late hours/minutes from attendance data
+    const attendanceLateHours = Math.floor(totalLateMinutes / 60);
+    const attendanceLateMinutes = totalLateMinutes % 60;
+    const lateHoursInput = document.getElementById('payrollInlineLateHours');
+    const lateMinutesInput = document.getElementById('payrollInlineLateMinutes');
+    if (lateHoursInput) lateHoursInput.value = attendanceLateHours;
+    if (lateMinutesInput) lateMinutesInput.value = attendanceLateMinutes;
+
+    // Use the displayed late values for calculation
+    const totalLateMins = totalLateMinutes;
 
     // Late deduction (hourly rate = daily rate / 8)
     const hourlyRate = dailyRate / 8;
