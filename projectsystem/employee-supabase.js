@@ -456,6 +456,20 @@
     const payslip = payslips.find(p => p.id === id);
     if (!payslip) return;
 
+    // Load logo image first
+    const logoImg = new Image();
+    logoImg.crossOrigin = 'anonymous';
+    logoImg.onload = function() {
+      generatePDF(payslip, logoImg);
+    };
+    logoImg.onerror = function() {
+      // Generate PDF without logo if image fails to load
+      generatePDF(payslip, null);
+    };
+    logoImg.src = 'src/logo.png';
+  };
+
+  function generatePDF(payslip, logoImg) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
@@ -478,15 +492,14 @@
     doc.setFont('helvetica', 'normal');
     doc.text(`Week: ${weekLabel}`, pageWidth / 2, y, { align: 'center' });
 
-    // Company logo placeholder (top right)
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 128, 0);
-    doc.text('C4S', pageWidth - 30, 20);
-    doc.setFontSize(6);
-    doc.setFont('helvetica', 'normal');
-    doc.text('FOOD SOLUTION', pageWidth - 35, 25);
-    doc.setTextColor(0, 0, 0);
+    // Company logo (top right)
+    if (logoImg) {
+      try {
+        doc.addImage(logoImg, 'PNG', pageWidth - 45, 10, 35, 20);
+      } catch (e) {
+        console.log('Could not add logo to PDF');
+      }
+    }
 
     // Employee info
     y += 10;
