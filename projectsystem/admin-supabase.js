@@ -214,6 +214,8 @@
     renderSalarySlips();
     renderPayroll();
     renderTimeClock();
+    renderSidePayslipList();
+    renderPerformanceChart();
   }
 
   function updateHomeStats() {
@@ -229,13 +231,21 @@
 
     // Count lates this week
     const weekStart = db.getWeekStart();
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
     const lates = attendance.filter(a => {
-      return a.date >= weekStart && a.late_minutes > 0;
+      return a.date >= weekStart && a.date <= weekEndStr && a.late_minutes > 0;
     }).length;
     if (els.homeLateCount) els.homeLateCount.textContent = lates;
 
-    // Count absents would require comparing expected vs actual attendance
-    if (els.homeAbsentCount) els.homeAbsentCount.textContent = '0';
+    // Count absents this week (expected days - actual attendance)
+    const expectedDaysPerEmployee = 6; // Mon-Sat
+    const totalExpected = employees.length * expectedDaysPerEmployee;
+    const actualAttendance = attendance.filter(a => a.date >= weekStart && a.date <= weekEndStr).length;
+    const absents = Math.max(0, totalExpected - actualAttendance);
+    if (els.homeAbsentCount) els.homeAbsentCount.textContent = absents;
   }
 
   function renderEmployees() {
@@ -1053,6 +1063,192 @@
       if (window.toastError) toastError('Error', err.message || 'Failed to reject leave');
     }
   };
+
+  // =============================================
+  // SIDEBAR PAYSLIP STATUS
+  // =============================================
+  let sideWeekOffset = 0;
+
+  function renderSidePayslipList() {
+    const container = document.getElementById('sidePayslipList');
+    const labelEl = document.getElementById('sideWeekLabel');
+    if (!container) return;
+
+    const weekStart = getOffsetWeekStart(sideWeekOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    if (labelEl) {
+      labelEl.textContent = formatWeekLabel(weekStart);
+    }
+
+    container.innerHTML = '';
+
+    if (employees.length === 0) {
+      container.innerHTML = '<div class="muted" style="padding:12px">No employees available</div>';
+      return;
+    }
+
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+
+    employees.forEach(emp => {
+      const empPayslip = payslips.find(p =>
+        p.employee_id === emp.id && p.week_start === weekStartStr
+      );
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-bottom:1px solid #f1f5f9;';
+
+      const left = document.createElement('div');
+      left.innerHTML = `<div style="font-weight:600;font-size:13px;color:#1f2937">${emp.name || emp.id}</div><div style="font-size:12px;color:#6b7280">${emp.id}</div>`;
+
+      const right = document.createElement('div');
+      right.style.textAlign = 'right';
+
+      if (empPayslip) {
+        const status = empPayslip.status || 'Pending';
+        const badge = document.createElement('span');
+        badge.textContent = status;
+        badge.style.cssText = 'display:inline-block;padding:4px 10px;border-radius:12px;color:#fff;font-size:11px;font-weight:600;';
+        if (status === 'Approved') badge.style.background = '#10b981';
+        else if (status === 'Rejected') badge.style.background = '#ef4444';
+        else badge.style.background = '#f59e0b';
+        right.appendChild(badge);
+      } else {
+        const noPayslip = document.createElement('span');
+        noPayslip.textContent = 'No payslip';
+        noPayslip.style.cssText = 'font-size:11px;color:#9ca3af;';
+        right.appendChild(noPayslip);
+      }
+
+      row.appendChild(left);
+      row.appendChild(right);
+      container.appendChild(row);
+    });
+  }
+
+  // Sidebar week navigation
+  document.getElementById('sideWeekPrev')?.addEventListener('click', () => {
+    sideWeekOffset--;
+    renderSidePayslipList();
+  });
+
+  document.getElementById('sideWeekNext')?.addEventListener('click', () => {
+    sideWeekOffset++;
+    renderSidePayslipList();
+  });
+
+  // =============================================
+  // PERFORMANCE CHART
+  // =============================================
+  let perfWeekOffset = 0;
+
+  function renderPerformanceChart() {
+    const container = document.getElementById('perfChartContainer');
+    const labelEl = document.getElementById('perfWeekLabel');
+    const avgEl = document.getElementById('perfAverage');
+    if (!container) return;
+
+    const weekStart = getOffsetWeekStart(perfWeekOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    if (labelEl) {
+      labelEl.textContent = formatWeekLabel(weekStart);
+    }
+
+    container.innerHTML = '';
+
+    if (employees.length === 0) {
+      container.innerHTML = '<div class="muted" style="padding:20px;text-align:center">No employees available</div>';
+      if (avgEl) avgEl.textContent = '0% average';
+      return;
+    }
+
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+    // Calculate performance for each employee
+    const perfData = employees.map(emp => {
+      const empAttendance = attendance.filter(a =>
+        a.employee_id === emp.id &&
+        a.date >= weekStartStr &&
+        a.date <= weekEndStr
+      );
+
+      let onTime = 0, late = 0, absent = 0;
+      const expectedDays = 6; // Mon-Sat
+
+      empAttendance.forEach(a => {
+        if (a.late_minutes > 0) late++;
+        else onTime++;
+      });
+
+      absent = Math.max(0, expectedDays - empAttendance.length);
+
+      return {
+        id: emp.id,
+        name: emp.name,
+        onTime,
+        late,
+        absent,
+        total: onTime + late + absent
+      };
+    });
+
+    // Calculate average on-time percentage
+    const totalOnTime = perfData.reduce((sum, p) => sum + p.onTime, 0);
+    const totalDays = perfData.reduce((sum, p) => sum + p.total, 0);
+    const avgPercent = totalDays > 0 ? Math.round((totalOnTime / totalDays) * 100) : 0;
+    if (avgEl) avgEl.textContent = avgPercent + '% average';
+
+    // Render horizontal bar chart
+    perfData.forEach(p => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;margin-bottom:8px;gap:10px;';
+
+      const label = document.createElement('div');
+      label.style.cssText = 'width:140px;font-size:12px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+      label.textContent = `${p.name} (${p.id})`;
+
+      const barContainer = document.createElement('div');
+      barContainer.style.cssText = 'flex:1;height:20px;background:#f3f4f6;border-radius:4px;display:flex;overflow:hidden;';
+
+      const total = p.onTime + p.late + p.absent;
+      if (total > 0) {
+        if (p.onTime > 0) {
+          const onTimeBar = document.createElement('div');
+          onTimeBar.style.cssText = `width:${(p.onTime/total)*100}%;background:#10b981;`;
+          barContainer.appendChild(onTimeBar);
+        }
+        if (p.late > 0) {
+          const lateBar = document.createElement('div');
+          lateBar.style.cssText = `width:${(p.late/total)*100}%;background:#f59e0b;`;
+          barContainer.appendChild(lateBar);
+        }
+        if (p.absent > 0) {
+          const absentBar = document.createElement('div');
+          absentBar.style.cssText = `width:${(p.absent/total)*100}%;background:#d1d5db;`;
+          barContainer.appendChild(absentBar);
+        }
+      }
+
+      row.appendChild(label);
+      row.appendChild(barContainer);
+      container.appendChild(row);
+    });
+  }
+
+  // Performance chart week navigation
+  document.getElementById('perfWeekPrev')?.addEventListener('click', () => {
+    perfWeekOffset--;
+    renderPerformanceChart();
+  });
+
+  document.getElementById('perfWeekNext')?.addEventListener('click', () => {
+    perfWeekOffset++;
+    renderPerformanceChart();
+  });
 
   // =============================================
   // INITIALIZE
