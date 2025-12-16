@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="login.css">
+<link rel="stylesheet" href="shared.css">
+<title>C4S Payroll - Registration</title>
+</head>
+<body>
+<div class="animated-background"></div>
+<div class="login-wrapper">
+  <div class="user-icon">
+    <img src="src/logo.png" alt="Logo" class="logo-img">
+  </div>
+  <div class="container" id="register-form">
+    <h2>Employee Registration</h2>
+    <form id="regForm">
+      <div class="input-wrapper">
+        <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20.59 22C20.59 18.13 16.74 15 12 15C7.26 15 3.41 18.13 3.41 22" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <input type="text" id="fullname" name="fullname" placeholder="Full Name" required />
+      </div>
+
+      <div class="input-wrapper">
+        <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7V11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+          <select id="role" name="role" required style="width:100%;padding:10px 12px;background:transparent;border:none;color:#111;font-size:16px">
+            <option value="" disabled selected>Select Role</option>
+            <option value="Cashier">Cashier</option>
+            <option value="Sales Representative">Sales Representative</option>
+            <option value="Customer Service">Customer Service</option>
+            <option value="Driver">Driver</option>
+            <option value="Checker">Checker</option>
+            <option value="Packer">Packer</option>
+            <option value="Sales Agent">Sales Agent</option>
+            <option value="Warehouse Head">Warehouse Head</option>
+            <option value="Warehouse Staff">Warehouse Staff</option>
+          </select>
+          <style>
+            select#role { color: #111 !important; }
+            select#role option { color: #000000 !important; background: transparent !important; }
+          </style>
+      </div>
+
+      <div class="input-wrapper">
+        <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M22 6L12 13L2 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <input type="email" id="email" name="email" placeholder="Email" required />
+      </div>
+
+      <div class="input-wrapper">
+        <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="7" r="4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <input type="text" id="username" name="username" placeholder="Username" required />
+      </div>
+
+      <div class="input-wrapper">
+        <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7V11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <input type="password" id="password" name="password" placeholder="Password" required />
+      </div>
+
+      <div class="input-wrapper">
+        <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7V11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M9 12L11 14L15 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <input type="password" id="confirm-password" name="confirm-password" placeholder="Confirm Password" required />
+      </div>
+
+      <button type="submit">REGISTER</button>
+    </form>
+
+    <div id="message" style="margin-top:12px;text-align:center;font-size:14px;padding:10px;border-radius:8px;display:none;"></div>
+    <div style="margin-top:20px; text-align:center;">
+      <span style="color:rgba(255,255,255,0.8);">already have an account? </span>
+      <a href="login.html" style="color:#fff; text-decoration:underline;font-weight:500;">Sign in</a>
+    </div>
+  </div>
+</div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="supabase-db.js"></script>
+<script src="shared-utils.js"></script>
+
+<script>
+// Message display
+function showMessage(text, isError) {
+  var msgEl = document.getElementById('message');
+  if (msgEl) {
+    msgEl.textContent = text;
+    msgEl.style.display = 'block';
+    msgEl.style.background = isError ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)';
+    msgEl.style.color = '#fff';
+  }
+  if (isError && window.toastError) {
+    try { toastError('Error', text); } catch(e) {}
+  } else if (!isError && window.toastSuccess) {
+    try { toastSuccess('Success', text); } catch(e) {}
+  }
+}
+
+document.querySelector('#regForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  var fullname = document.getElementById('fullname').value.trim();
+  var email = document.getElementById('email').value.trim().toLowerCase();
+  var username = document.getElementById('username').value.trim().toLowerCase();
+  var role = document.getElementById('role').value;
+  var password = document.getElementById('password').value;
+  var confirmPassword = document.getElementById('confirm-password').value;
+  var submitBtn = this.querySelector('button[type="submit"]');
+
+  // Validation
+  if (!fullname || !email || !username || !role || !password) {
+    showMessage('Please fill in all fields', true);
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    showMessage('Passwords do not match', true);
+    return;
+  }
+
+  if (password.length < 6) {
+    showMessage('Password must be at least 6 characters', true);
+    return;
+  }
+
+  // Add loading state
+  if (window.setButtonLoading) setButtonLoading(submitBtn, true);
+
+  try {
+    // Check if email already exists
+    const { data: emailCheck } = await supabaseClient
+      .from('employees')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (emailCheck) {
+      if (window.setButtonLoading) setButtonLoading(submitBtn, false);
+      showMessage('This email is already registered. Please login instead.', true);
+      return;
+    }
+
+    // Check if username already exists
+    const { data: usernameCheck } = await supabaseClient
+      .from('employees')
+      .select('id')
+      .eq('username', username)
+      .single();
+
+    if (usernameCheck) {
+      if (window.setButtonLoading) setButtonLoading(submitBtn, false);
+      showMessage('This username is already taken', true);
+      return;
+    }
+
+    // Generate unique employee ID
+    const employeeId = await db.generateEmployeeId();
+
+    // Create employee in Supabase
+    const { data, error } = await supabaseClient
+      .from('employees')
+      .insert([{
+        id: employeeId,
+        name: fullname,
+        email: email,
+        username: username,
+        password_hash: password,
+        role: role,
+        salary: 159120,
+        sss_deduction: 300,
+        philhealth_deduction: 250,
+        pagibig_deduction: 200,
+        status: 'active'
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    if (window.setButtonLoading) setButtonLoading(submitBtn, false);
+    showMessage('Registration Successful! Your Employee ID is: ' + employeeId, false);
+
+    setTimeout(function() {
+      window.location.href = "login.html";
+    }, 2500);
+
+  } catch (err) {
+    console.error('Registration error:', err);
+    if (window.setButtonLoading) setButtonLoading(submitBtn, false);
+    showMessage(err.message || 'Registration failed. Please try again.', true);
+  }
+});
+</script>
+
+</body>
+</html>

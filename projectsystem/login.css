@@ -1,0 +1,338 @@
+/**
+ * Login Page Styles
+ * Scoped to login and registration pages only
+ */
+
+/* Reset - scoped to login wrapper */
+.login-wrapper *,
+.login-wrapper *::before,
+.login-wrapper *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Animated gradient background */
+.animated-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #d4a5f0 0%, #a8c8f0 50%, #8bb5e8 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  z-index: -1;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.login-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 60px 20px 40px;
+  position: relative;
+}
+
+/* Logo/User icon above container */
+.user-icon {
+  width: 90px;
+  height: 90px;
+  background: #fff;
+  border: 3px solid #1e3a5f;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: -45px;
+  z-index: 10;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Frosted glass container */
+.container {
+  position: relative;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 60px 40px 40px;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.container h2 {
+  text-align: center;
+  margin-bottom: 28px;
+  color: #1e3a5f;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.container form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Input wrapper with icon */
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #1e3a5f;
+  border-radius: 10px;
+  padding: 0 16px;
+  height: 52px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.input-wrapper:focus-within {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.2);
+}
+
+.input-icon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+/* Login page inputs - scoped */
+.container input[type="text"],
+.container input[type="email"],
+.container input[type="password"] {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 15px;
+  outline: none;
+  padding: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  box-shadow: none;
+}
+
+.container input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.container input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Login page select - scoped */
+.container select {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 15px;
+  outline: none;
+  padding: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+.container select option {
+  color: #111;
+  background: white;
+}
+
+/* Login/Register button - scoped */
+.container button[type="submit"] {
+  margin-top: 8px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 14px 0;
+  color: #1e3a5f;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.container button[type="submit"]:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.container button[type="submit"]:active {
+  transform: translateY(0);
+}
+
+/* Loading state for login button */
+.container button[type="submit"].loading {
+  color: transparent !important;
+  position: relative;
+  pointer-events: none;
+}
+
+.container button[type="submit"].loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: 50%;
+  left: 50%;
+  margin-left: -10px;
+  margin-top: -10px;
+  border: 2px solid rgba(30, 58, 95, 0.3);
+  border-top-color: #1e3a5f;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Message box */
+#message {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Links section */
+.container > div:last-of-type {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.container > div:last-of-type span {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+}
+
+.container > div:last-of-type a {
+  color: #fff;
+  text-decoration: underline;
+  font-weight: 500;
+  font-size: 14px;
+  transition: opacity 0.2s;
+}
+
+.container > div:last-of-type a:hover {
+  opacity: 0.8;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .login-wrapper {
+    padding: 50px 16px 30px;
+  }
+
+  .user-icon {
+    width: 80px;
+    height: 80px;
+    margin-bottom: -40px;
+  }
+
+  .container {
+    padding: 50px 24px 32px;
+    max-width: 100%;
+    border-radius: 16px;
+  }
+
+  .container h2 {
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+
+  .container form {
+    gap: 14px;
+  }
+
+  .input-wrapper {
+    height: 48px;
+    padding: 0 14px;
+    gap: 10px;
+  }
+
+  .container input,
+  .container select {
+    font-size: 14px;
+  }
+
+  .container button[type="submit"] {
+    padding: 12px 0;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .container {
+    padding: 45px 20px 28px;
+  }
+
+  .container h2 {
+    font-size: 18px;
+  }
+
+  .input-wrapper {
+    height: 46px;
+    border-radius: 8px;
+  }
+}

@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Migration Tool - C4S Payroll</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .header h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+        .header p { opacity: 0.8; font-size: 0.9rem; }
+        .content { padding: 2rem; }
+        .section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        .section h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 2px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        .stat-card .number { font-size: 2rem; font-weight: bold; color: #667eea; }
+        .stat-card .label { font-size: 0.8rem; color: #666; margin-top: 0.25rem; }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #e0e0e0; color: #333; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .log {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.8rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry { padding: 0.25rem 0; border-bottom: 1px solid #333; }
+        .log-entry:last-child { border-bottom: none; }
+        .log-success { color: #4ade80; }
+        .log-error { color: #f87171; }
+        .log-info { color: #60a5fa; }
+        .log-warning { color: #fbbf24; }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .info-box {
+            background: #d1ecf1;
+            border: 1px solid #17a2b8;
+            color: #0c5460;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .db-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .db-card {
+            padding: 1rem;
+            border-radius: 8px;
+            background: white;
+            border: 2px solid #e0e0e0;
+        }
+        .db-card.source { border-color: #ffc107; }
+        .db-card.target { border-color: #28a745; }
+        .db-card h3 { font-size: 0.9rem; margin-bottom: 0.5rem; }
+        .db-card code { font-size: 0.75rem; color: #666; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Supabase to Supabase Migration</h1>
+            <p>Transfer data from old database to new database</p>
+        </div>
+
+        <div class="content">
+            <!-- Database Info -->
+            <div class="section">
+                <h2>Database Configuration</h2>
+                <div class="db-info">
+                    <div class="db-card source">
+                        <h3>SOURCE (Old Database)</h3>
+                        <code id="sourceUrl">jnjerzsiqrrfytbpszdv.supabase.co</code>
+                    </div>
+                    <div class="db-card target">
+                        <h3>TARGET (New Database)</h3>
+                        <code id="targetUrl">gbywumcfcyyxmyubhexb.supabase.co</code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 1: Fetch from Source -->
+            <div class="section">
+                <h2>Step 1: Fetch Data from Source Database</h2>
+                <div class="stats" id="sourceStats">
+                    <div class="stat-card">
+                        <div class="number" id="srcEmployeeCount">-</div>
+                        <div class="label">Employees</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="srcAttendanceCount">-</div>
+                        <div class="label">Attendance</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="srcPayslipCount">-</div>
+                        <div class="label">Payslips</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="srcLeaveCount">-</div>
+                        <div class="label">Leave Requests</div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="fetchSourceData()">Fetch Source Data</button>
+            </div>
+
+            <!-- Step 2: Migration -->
+            <div class="section">
+                <h2>Step 2: Migrate to New Database</h2>
+                <div class="warning-box">
+                    <strong>Warning:</strong> This will copy all data from the old Supabase to the new one.
+                    Make sure you've created the tables in the new database first.
+                </div>
+                <div class="progress-bar">
+                    <div class="fill" id="progressFill"></div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="startMigration" onclick="startMigration()">
+                        Start Migration
+                    </button>
+                    <button class="btn btn-danger" onclick="clearLogs()">Clear Logs</button>
+                </div>
+            </div>
+
+            <!-- Migration Log -->
+            <div class="section">
+                <h2>Migration Log</h2>
+                <div class="log" id="migrationLog">
+                    <div class="log-entry log-info">Click "Fetch Source Data" first, then "Start Migration".</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // OLD Supabase (Source)
+        const SOURCE_URL = 'https://jnjerzsiqrrfytbpszdv.supabase.co';
+        const SOURCE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuamVyenNpcXJyZnl0YnBzemR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NjQxNTUsImV4cCI6MjA4MTQ0MDE1NX0.V0wDU1UY51GUIjHpZHqDyc6Q1sVVEf0hhcEAsDOTlcw';
+
+        // NEW Supabase (Target)
+        const TARGET_URL = 'https://gbywumcfcyyxmyubhexb.supabase.co';
+        const TARGET_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdieXd1bWNmY3l5eG15dWJoZXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NjY2NTQsImV4cCI6MjA4MTQ0MjY1NH0.2yximJM_bm0Ue0x9okFEdMAA_aYQtDMb3jDCjaj4aeI';
+
+        // Create clients
+        const sourceDb = window.supabase.createClient(SOURCE_URL, SOURCE_KEY);
+        const targetDb = window.supabase.createClient(TARGET_URL, TARGET_KEY);
+
+        // Data containers
+        let sourceData = {
+            employees: [],
+            attendance: [],
+            payslips: [],
+            leaveRequests: [],
+            archivedEmployees: []
+        };
+
+        // Log helper
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('migrationLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('migrationLog').innerHTML = '<div class="log-entry log-info">Logs cleared.</div>';
+        }
+
+        function setProgress(percent) {
+            document.getElementById('progressFill').style.width = `${percent}%`;
+        }
+
+        // Fetch all data from source database
+        async function fetchSourceData() {
+            log('Fetching data from source database...', 'info');
+
+            try {
+                // Fetch employees
+                const { data: employees, error: empError } = await sourceDb
+                    .from('employees')
+                    .select('*');
+                if (empError) throw empError;
+                sourceData.employees = employees || [];
+                document.getElementById('srcEmployeeCount').textContent = sourceData.employees.length;
+                log(`Found ${sourceData.employees.length} employees`, 'success');
+
+                // Fetch attendance
+                const { data: attendance, error: attError } = await sourceDb
+                    .from('attendance')
+                    .select('*');
+                if (attError) throw attError;
+                sourceData.attendance = attendance || [];
+                document.getElementById('srcAttendanceCount').textContent = sourceData.attendance.length;
+                log(`Found ${sourceData.attendance.length} attendance records`, 'success');
+
+                // Fetch payslips
+                const { data: payslips, error: payError } = await sourceDb
+                    .from('payslips')
+                    .select('*');
+                if (payError) throw payError;
+                sourceData.payslips = payslips || [];
+                document.getElementById('srcPayslipCount').textContent = sourceData.payslips.length;
+                log(`Found ${sourceData.payslips.length} payslips`, 'success');
+
+                // Fetch leave requests
+                const { data: leaves, error: leaveError } = await sourceDb
+                    .from('leave_requests')
+                    .select('*');
+                if (leaveError) throw leaveError;
+                sourceData.leaveRequests = leaves || [];
+                document.getElementById('srcLeaveCount').textContent = sourceData.leaveRequests.length;
+                log(`Found ${sourceData.leaveRequests.length} leave requests`, 'success');
+
+                // Fetch archived employees
+                const { data: archived, error: archError } = await sourceDb
+                    .from('archived_employees')
+                    .select('*');
+                if (!archError) {
+                    sourceData.archivedEmployees = archived || [];
+                    log(`Found ${sourceData.archivedEmployees.length} archived employees`, 'success');
+                }
+
+                log('Source data fetch complete!', 'success');
+
+            } catch (error) {
+                log(`Error fetching source data: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        // Start migration
+        async function startMigration() {
+            const btn = document.getElementById('startMigration');
+            btn.disabled = true;
+            btn.textContent = 'Migrating...';
+
+            try {
+                if (sourceData.employees.length === 0) {
+                    log('No data to migrate. Click "Fetch Source Data" first.', 'warning');
+                    return;
+                }
+
+                log('Starting migration to new database...', 'info');
+                setProgress(0);
+
+                // Migrate Employees (must be first due to foreign keys)
+                await migrateEmployees();
+                setProgress(25);
+
+                // Migrate Attendance
+                await migrateAttendance();
+                setProgress(50);
+
+                // Migrate Payslips
+                await migratePayslips();
+                setProgress(75);
+
+                // Migrate Leave Requests
+                await migrateLeaveRequests();
+                setProgress(90);
+
+                // Migrate Archived Employees
+                await migrateArchivedEmployees();
+                setProgress(100);
+
+                log('=================================', 'success');
+                log('Migration completed successfully!', 'success');
+                log('=================================', 'success');
+
+            } catch (error) {
+                log(`Migration failed: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Start Migration';
+            }
+        }
+
+        async function migrateEmployees() {
+            log(`Migrating ${sourceData.employees.length} employees...`, 'info');
+            let success = 0, skipped = 0, failed = 0;
+
+            for (const emp of sourceData.employees) {
+                try {
+                    // Check if exists
+                    const { data: existing } = await targetDb
+                        .from('employees')
+                        .select('id')
+                        .eq('id', emp.id)
+                        .single();
+
+                    if (existing) {
+                        skipped++;
+                        continue;
+                    }
+
+                    // Insert with all fields
+                    const { error } = await targetDb
+                        .from('employees')
+                        .insert([{
+                            id: emp.id,
+                            name: emp.name,
+                            email: emp.email,
+                            username: emp.username,
+                            password_hash: emp.password_hash,
+                            role: emp.role,
+                            salary: emp.salary,
+                            sss_deduction: emp.sss_deduction,
+                            philhealth_deduction: emp.philhealth_deduction,
+                            pagibig_deduction: emp.pagibig_deduction,
+                            last_net: emp.last_net,
+                            status: emp.status || 'active',
+                            created_at: emp.created_at,
+                            updated_at: emp.updated_at
+                        }]);
+
+                    if (error) throw error;
+                    success++;
+                    log(`  Migrated employee: ${emp.name} (${emp.id})`, 'success');
+                } catch (e) {
+                    failed++;
+                    log(`  Failed to migrate employee ${emp.id}: ${e.message}`, 'error');
+                }
+            }
+
+            log(`Employees: ${success} migrated, ${skipped} skipped, ${failed} failed`,
+                failed > 0 ? 'warning' : 'success');
+        }
+
+        async function migrateAttendance() {
+            log(`Migrating ${sourceData.attendance.length} attendance records...`, 'info');
+            let success = 0, skipped = 0, failed = 0;
+
+            for (const att of sourceData.attendance) {
+                try {
+                    // Check if exists
+                    const { data: existing } = await targetDb
+                        .from('attendance')
+                        .select('id')
+                        .eq('employee_id', att.employee_id)
+                        .eq('date', att.date)
+                        .single();
+
+                    if (existing) {
+                        skipped++;
+                        continue;
+                    }
+
+                    // Insert (without id - let it auto-generate)
+                    const { error } = await targetDb
+                        .from('attendance')
+                        .insert([{
+                            employee_id: att.employee_id,
+                            date: att.date,
+                            time_in: att.time_in,
+                            time_out: att.time_out,
+                            status: att.status,
+                            late_minutes: att.late_minutes,
+                            worked_hours: att.worked_hours,
+                            payable_hours: att.payable_hours,
+                            created_at: att.created_at,
+                            updated_at: att.updated_at
+                        }]);
+
+                    if (error) throw error;
+                    success++;
+                } catch (e) {
+                    failed++;
+                    log(`  Failed attendance record: ${e.message}`, 'error');
+                }
+            }
+
+            log(`Attendance: ${success} migrated, ${skipped} skipped, ${failed} failed`,
+                failed > 0 ? 'warning' : 'success');
+        }
+
+        async function migratePayslips() {
+            log(`Migrating ${sourceData.payslips.length} payslips...`, 'info');
+            let success = 0, skipped = 0, failed = 0;
+
+            for (const pay of sourceData.payslips) {
+                try {
+                    // Check if exists
+                    const { data: existing } = await targetDb
+                        .from('payslips')
+                        .select('id')
+                        .eq('employee_id', pay.employee_id)
+                        .eq('week_start', pay.week_start)
+                        .single();
+
+                    if (existing) {
+                        skipped++;
+                        continue;
+                    }
+
+                    const { error } = await targetDb
+                        .from('payslips')
+                        .insert([{
+                            employee_id: pay.employee_id,
+                            week_start: pay.week_start,
+                            week_end: pay.week_end,
+                            gross_pay: pay.gross_pay,
+                            sss: pay.sss,
+                            philhealth: pay.philhealth,
+                            pagibig: pay.pagibig,
+                            late_deduction: pay.late_deduction,
+                            total_deductions: pay.total_deductions,
+                            net_pay: pay.net_pay,
+                            worked_hours: pay.worked_hours,
+                            status: pay.status,
+                            created_at: pay.created_at,
+                            updated_at: pay.updated_at
+                        }]);
+
+                    if (error) throw error;
+                    success++;
+                } catch (e) {
+                    failed++;
+                    log(`  Failed payslip: ${e.message}`, 'error');
+                }
+            }
+
+            log(`Payslips: ${success} migrated, ${skipped} skipped, ${failed} failed`,
+                failed > 0 ? 'warning' : 'success');
+        }
+
+        async function migrateLeaveRequests() {
+            log(`Migrating ${sourceData.leaveRequests.length} leave requests...`, 'info');
+            let success = 0, skipped = 0, failed = 0;
+
+            for (const leave of sourceData.leaveRequests) {
+                try {
+                    const { error } = await targetDb
+                        .from('leave_requests')
+                        .insert([{
+                            employee_id: leave.employee_id,
+                            leave_type: leave.leave_type,
+                            start_date: leave.start_date,
+                            end_date: leave.end_date,
+                            reason: leave.reason,
+                            status: leave.status,
+                            admin_comment: leave.admin_comment,
+                            created_at: leave.created_at,
+                            updated_at: leave.updated_at
+                        }]);
+
+                    if (error) throw error;
+                    success++;
+                } catch (e) {
+                    failed++;
+                    log(`  Failed leave request: ${e.message}`, 'error');
+                }
+            }
+
+            log(`Leave requests: ${success} migrated, ${skipped} skipped, ${failed} failed`,
+                failed > 0 ? 'warning' : 'success');
+        }
+
+        async function migrateArchivedEmployees() {
+            if (sourceData.archivedEmployees.length === 0) {
+                log('No archived employees to migrate', 'info');
+                return;
+            }
+
+            log(`Migrating ${sourceData.archivedEmployees.length} archived employees...`, 'info');
+            let success = 0, failed = 0;
+
+            for (const emp of sourceData.archivedEmployees) {
+                try {
+                    const { error } = await targetDb
+                        .from('archived_employees')
+                        .insert([{
+                            id: emp.id,
+                            name: emp.name,
+                            email: emp.email,
+                            username: emp.username,
+                            role: emp.role,
+                            salary: emp.salary,
+                            archived_at: emp.archived_at
+                        }]);
+
+                    if (error) throw error;
+                    success++;
+                } catch (e) {
+                    failed++;
+                    log(`  Failed archived employee: ${e.message}`, 'error');
+                }
+            }
+
+            log(`Archived employees: ${success} migrated, ${failed} failed`,
+                failed > 0 ? 'warning' : 'success');
+        }
+    </script>
+</body>
+</html>

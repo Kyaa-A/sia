@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>C4S Payroll - Test Data Seeder</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 40px;
+    }
+    h1 {
+      color: #1e3a5f;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .section {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .section h3 {
+      color: #374151;
+      margin-bottom: 15px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section h3 .count {
+      background: #e5e7eb;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 12px 24px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #1e3a5f, #2d4a6f);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 4px 12px rgba(30, 58, 95, 0.4);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+    }
+    .btn-success:hover {
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #fff;
+    }
+    .btn-danger:hover {
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+    .btn-secondary {
+      background: #fff;
+      color: #374151;
+      border: 2px solid #e5e7eb;
+    }
+    .btn-secondary:hover {
+      border-color: #9ca3af;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .status.info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .data-preview {
+      background: #1f2937;
+      color: #10b981;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 15px;
+      white-space: pre-wrap;
+    }
+    .nav-links {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .nav-links a {
+      display: inline-block;
+      margin-right: 20px;
+      color: #1e3a5f;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .nav-links a:hover {
+      text-decoration: underline;
+    }
+    .test-credentials {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 20px;
+    }
+    .test-credentials h4 {
+      color: #92400e;
+      margin-bottom: 10px;
+    }
+    .test-credentials code {
+      background: #fff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Test Data Seeder</h1>
+    <p class="subtitle">Populate the system with test data for development and testing purposes.</p>
+
+    <div class="section">
+      <h3>Employees <span class="count" id="employeeCount">0</span></h3>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="seedEmployees()">Seed 5 Employees</button>
+        <button class="btn-success" onclick="syncMissingEmployees()">Sync Missing Employees</button>
+        <button class="btn-secondary" onclick="viewEmployees()">View Data</button>
+        <button class="btn-danger" onclick="clearEmployees()">Clear All</button>
+      </div>
+      <div id="employeePreview" class="data-preview" style="display:none"></div>
+    </div>
+
+    <div class="section">
+      <h3>Attendance Records <span class="count" id="attendanceCount">0</span></h3>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="seedAttendance()">Seed 2 Weeks Attendance</button>
+        <button class="btn-secondary" onclick="viewAttendance()">View Data</button>
+        <button class="btn-danger" onclick="clearAttendance()">Clear All</button>
+      </div>
+      <div id="attendancePreview" class="data-preview" style="display:none"></div>
+    </div>
+
+    <div class="section">
+      <h3>Leave Requests <span class="count" id="leaveCount">0</span></h3>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="seedLeaves()">Seed Leave Requests</button>
+        <button class="btn-secondary" onclick="viewLeaves()">View Data</button>
+        <button class="btn-danger" onclick="clearLeaves()">Clear All</button>
+      </div>
+      <div id="leavePreview" class="data-preview" style="display:none"></div>
+    </div>
+
+    <div class="section">
+      <h3>Payslips <span class="count" id="payslipCount">0</span></h3>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="seedPayslips()">Seed Payslips</button>
+        <button class="btn-secondary" onclick="viewPayslips()">View Data</button>
+        <button class="btn-danger" onclick="clearPayslips()">Clear All</button>
+      </div>
+      <div id="payslipPreview" class="data-preview" style="display:none"></div>
+    </div>
+
+    <div class="section" style="background: #ecfdf5;">
+      <h3 style="color: #065f46;">Quick Actions</h3>
+      <div class="btn-group">
+        <button class="btn-success" onclick="seedAll()">Seed All Test Data</button>
+        <button class="btn-danger" onclick="clearAll()">Clear All Data</button>
+      </div>
+    </div>
+
+    <div id="statusMessage"></div>
+
+    <div class="test-credentials">
+      <h4>Test Credentials</h4>
+      <p><strong>Admin:</strong> Username: <code>admin</code> Password: <code>0304</code></p>
+      <p style="margin-top:8px"><strong>Test Employees (after seeding):</strong></p>
+      <p>Username: <code>maria.santos</code> Password: <code>test123</code></p>
+      <p>Username: <code>juan.cruz</code> Password: <code>test123</code></p>
+    </div>
+
+    <div class="section" style="background: #fef2f2;">
+      <h3 style="color: #991b1b;">Debug: View Raw LocalStorage</h3>
+      <div class="btn-group">
+        <button class="btn-secondary" onclick="debugShowAll()">Show All Data</button>
+        <button class="btn-danger" onclick="forceSyncFromCredentials()">Force Sync from Credentials</button>
+      </div>
+      <div id="debugPreview" class="data-preview" style="display:none;max-height:400px;"></div>
+    </div>
+
+    <div class="nav-links">
+      <strong>Navigate to:</strong>
+      <a href="login.html">Login Page</a>
+      <a href="registration.html">Registration</a>
+      <a href="admin_dashboard.html">Admin Dashboard</a>
+      <a href="employee_dashboard.html">Employee Dashboard</a>
+    </div>
+  </div>
+
+  <script src="shared-utils.js"></script>
+  <script>
+    // Test Employee Data
+    var testEmployees = [
+      { id: '1001', name: 'Maria Santos', role: 'Cashier', salary: 159120, deductions: { sss: 300, philhealth: 250, pagibig: 200 } },
+      { id: '1002', name: 'Juan Cruz', role: 'Driver', salary: 159120, deductions: { sss: 300, philhealth: 250, pagibig: 200 } },
+      { id: '1003', name: 'Ana Reyes', role: 'Packer', salary: 159120, deductions: { sss: 300, philhealth: 250, pagibig: 200 } },
+      { id: '1004', name: 'Pedro Garcia', role: 'Warehouse Staff', salary: 159120, deductions: { sss: 300, philhealth: 250, pagibig: 200 } },
+      { id: '1005', name: 'Rosa Martinez', role: 'Sales Representative', salary: 180000, deductions: { sss: 350, philhealth: 300, pagibig: 200 } }
+    ];
+
+    var testCredentials = {
+      '1001': { email: 'maria.santos@test.com', username: 'maria.santos', password: 'test123', fullname: 'Maria Santos', employeeId: '1001' },
+      '1002': { email: 'juan.cruz@test.com', username: 'juan.cruz', password: 'test123', fullname: 'Juan Cruz', employeeId: '1002' },
+      '1003': { email: 'ana.reyes@test.com', username: 'ana.reyes', password: 'test123', fullname: 'Ana Reyes', employeeId: '1003' },
+      '1004': { email: 'pedro.garcia@test.com', username: 'pedro.garcia', password: 'test123', fullname: 'Pedro Garcia', employeeId: '1004' },
+      '1005': { email: 'rosa.martinez@test.com', username: 'rosa.martinez', password: 'test123', fullname: 'Rosa Martinez', employeeId: '1005' }
+    };
+
+    function showStatus(message, type) {
+      var el = document.getElementById('statusMessage');
+      el.className = 'status ' + type;
+      el.textContent = message;
+      el.style.display = 'block';
+      if (window.toastSuccess && type === 'success') {
+        toastSuccess('Success', message);
+      } else if (window.toastError && type === 'error') {
+        toastError('Error', message);
+      } else if (window.toastInfo && type === 'info') {
+        toastInfo('Info', message);
+      }
+    }
+
+    function updateCounts() {
+      var employees = JSON.parse(localStorage.getItem('payroll_employees') || '[]');
+      var attendance = JSON.parse(localStorage.getItem('payroll_attendance') || '[]');
+      document.getElementById('employeeCount').textContent = employees.length;
+      document.getElementById('attendanceCount').textContent = attendance.length;
+
+      // Count leaves
+      var leaveCount = 0;
+      for (var key in localStorage) {
+        if (key.indexOf('employee_requests_') === 0) {
+          var leaves = JSON.parse(localStorage.getItem(key) || '[]');
+          leaveCount += leaves.length;
+        }
+      }
+      document.getElementById('leaveCount').textContent = leaveCount;
+
+      // Count payslips
+      var payslipCount = 0;
+      for (var key in localStorage) {
+        if (key.indexOf('employee_payslips_') === 0) {
+          var payslips = JSON.parse(localStorage.getItem(key) || '[]');
+          payslipCount += payslips.length;
+        }
+      }
+      document.getElementById('payslipCount').textContent = payslipCount;
+    }
+
+    function seedEmployees() {
+      // Merge with existing employees instead of overwriting
+      var existingEmployees = JSON.parse(localStorage.getItem('payroll_employees') || '[]');
+      var existingCreds = JSON.parse(localStorage.getItem('payroll_credentials') || '{}');
+
+      // Add test employees only if they don't exist
+      var added = 0;
+      testEmployees.forEach(function(emp) {
+        var exists = existingEmployees.some(function(e) { return String(e.id) === String(emp.id); });
+        if (!exists) {
+          existingEmployees.push(emp);
+          added++;
+        }
+      });
+
+      // Merge credentials
+      for (var key in testCredentials) {
+        if (!existingCreds[key]) {
+          existingCreds[key] = testCredentials[key];
+        }
+      }
+
+      localStorage.setItem('payroll_employees', JSON.stringify(existingEmployees));
+      localStorage.setItem('payroll_credentials', JSON.stringify(existingCreds));
+      updateCounts();
+      showStatus('Added ' + added + ' test employees (merged with existing)!', 'success');
+    }
+
+    // Sync employees from credentials that are missing from employees list
+    function syncMissingEmployees() {
+      var creds = JSON.parse(localStorage.getItem('payroll_credentials') || '{}');
+      var employees = JSON.parse(localStorage.getItem('payroll_employees') || '[]');
+      var existingIds = employees.map(function(e) { return String(e.id); });
+
+      var added = 0;
+      var names = [];
+      for (var empId in creds) {
+        if (existingIds.indexOf(String(empId)) === -1) {
+          var cred = creds[empId];
+          var empName = cred.fullname || cred.username || 'Unknown';
+          employees.push({
+            id: empId,
+            name: empName,
+            role: cred.role || 'Employee',
+            salary: 3060 * 52,
+            lastNet: '—',
+            deductions: { sss: 300, philhealth: 250, pagibig: 200 }
+          });
+          added++;
+          names.push(empName);
+          existingIds.push(String(empId)); // Prevent duplicates in same sync
+        }
+      }
+
+      if (added > 0) {
+        localStorage.setItem('payroll_employees', JSON.stringify(employees));
+        showStatus('Synced ' + added + ' employee(s): ' + names.join(', '), 'success');
+      } else {
+        showStatus('All registered employees are already in the list.', 'info');
+      }
+      updateCounts();
+    }
+
+    function viewEmployees() {
+      var el = document.getElementById('employeePreview');
+      var data = JSON.parse(localStorage.getItem('payroll_employees') || '[]');
+      el.textContent = JSON.stringify(data, null, 2);
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function clearEmployees() {
+      localStorage.removeItem('payroll_employees');
+      localStorage.removeItem('payroll_credentials');
+      updateCounts();
+      showStatus('Cleared all employee data', 'info');
+    }
+
+    function getWeekStart(date) {
+      var d = new Date(date);
+      var day = d.getDay();
+      var diff = (day === 0) ? 6 : (day - 1);
+      d.setDate(d.getDate() - diff);
+      return d.toISOString().split('T')[0];
+    }
+
+    function seedAttendance() {
+      var employees = JSON.parse(localStorage.getItem('payroll_employees') || '[]');
+      if (employees.length === 0) {
+        showStatus('Please seed employees first!', 'error');
+        return;
+      }
+
+      var attendance = [];
+      var today = new Date();
+
+      // Generate 2 weeks of attendance (Mon-Sat)
+      for (var week = 0; week < 2; week++) {
+        for (var dayOffset = 0; dayOffset < 6; dayOffset++) { // Mon-Sat
+          var date = new Date(today);
+          date.setDate(date.getDate() - (week * 7) - (today.getDay() === 0 ? 6 : today.getDay() - 1) - dayOffset);
+
+          var dateStr = date.toISOString().split('T')[0];
+
+          employees.forEach(function(emp, idx) {
+            // Randomize some late arrivals and absences
+            var isAbsent = Math.random() < 0.1; // 10% chance absent
+            if (isAbsent) return;
+
+            var isLate = Math.random() < 0.2; // 20% chance late
+            var timeInHour = isLate ? 8 + Math.floor(Math.random() * 2) : 7 + Math.floor(Math.random() * 1);
+            var timeInMin = Math.floor(Math.random() * 60);
+            var timeOutHour = 17 + Math.floor(Math.random() * 2);
+            var timeOutMin = Math.floor(Math.random() * 60);
+
+            var timeIn = new Date(date);
+            timeIn.setHours(timeInHour, timeInMin, 0, 0);
+
+            var timeOut = new Date(date);
+            timeOut.setHours(timeOutHour, timeOutMin, 0, 0);
+
+            attendance.push({
+              id: emp.id,
+              name: emp.name,
+              role: emp.role,
+              date: dateStr,
+              timeIn: formatTime12(timeIn),
+              timeOut: formatTime12(timeOut),
+              timeInISO: timeIn.toISOString(),
+              timeOutISO: timeOut.toISOString(),
+              status: 'Offline',
+              attendanceId: emp.id + '_' + dateStr + '_' + Date.now() + idx
+            });
+          });
+        }
+      }
+
+      localStorage.setItem('payroll_attendance', JSON.stringify(attendance));
+      updateCounts();
+      showStatus('Seeded ' + attendance.length + ' attendance records (2 weeks)!', 'success');
+    }
+
+    function formatTime12(date) {
+      var h = date.getHours();
+      var m = String(date.getMinutes()).padStart(2, '0');
+      var ampm = h >= 12 ? 'pm' : 'am';
+      h = h % 12;
+      if (h === 0) h = 12;
+      return h + ':' + m + ' ' + ampm;
+    }
+
+    function viewAttendance() {
+      var el = document.getElementById('attendancePreview');
+      var data = JSON.parse(localStorage.getItem('payroll_attendance') || '[]');
+      el.textContent = JSON.stringify(data.slice(0, 10), null, 2) + (data.length > 10 ? '\n\n... and ' + (data.length - 10) + ' more records' : '');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function clearAttendance() {
+      localStorage.removeItem('payroll_attendance');
+      updateCounts();
+      showStatus('Cleared all attendance data', 'info');
+    }
+
+    function seedLeaves() {
+      var employees = JSON.parse(localStorage.getItem('payroll_employees') || '[]');
+      if (employees.length === 0) {
+        showStatus('Please seed employees first!', 'error');
+        return;
+      }
+
+      var leaveTypes = ['Vacation Leave', 'Sick Leave', 'Emergency Leave', 'Personal Leave'];
+      var statuses = ['Pending', 'Pending', 'Approved', 'Rejected']; // More pending
+
+      employees.forEach(function(emp) {
+        var leaves = [];
+        var numLeaves = 1 + Math.floor(Math.random() * 3); // 1-3 leave requests per employee
+
+        for (var i = 0; i < numLeaves; i++) {
+          var startDate = new Date();
+          startDate.setDate(startDate.getDate() + Math.floor(Math.random() * 30));
+          var endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + Math.floor(Math.random() * 3) + 1);
+
+          leaves.push({
+            id: 'leave_' + emp.id + '_' + Date.now() + i,
+            type: leaveTypes[Math.floor(Math.random() * leaveTypes.length)],
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            reason: 'Test leave request reason for ' + emp.name,
+            status: statuses[Math.floor(Math.random() * statuses.length)],
+            createdAt: new Date().toISOString()
+          });
+        }
+
+        localStorage.setItem('employee_requests_' + emp.id, JSON.stringify(leaves));
+      });
+
+      updateCounts();
+      showStatus('Seeded leave requests for all employees!', 'success');
+    }
+
+    function viewLeaves() {
+      var el = document.getElementById('leavePreview');
+      var allLeaves = [];
+      for (var key in localStorage) {
+        if (key.indexOf('employee_requests_') === 0) {
+          var empId = key.replace('employee_requests_', '');
+          var leaves = JSON.parse(localStorage.getItem(key) || '[]');
+          leaves.forEach(function(l) {
+            l._empId = empId;
+            allLeaves.push(l);
+          });
+        }
+      }
+      el.textContent = JSON.stringify(allLeaves.slice(0, 5), null, 2) + (allLeaves.length > 5 ? '\n\n... and ' + (allLeaves.length - 5) + ' more' : '');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function clearLeaves() {
+      var keysToRemove = [];
+      for (var key in localStorage) {
+        if (key.indexOf('employee_requests_') === 0) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
+      updateCounts();
+      showStatus('Cleared all leave requests', 'info');
+    }
+
+    function seedPayslips() {
+      var employees = JSON.parse(localStorage.getItem('payroll_employees') || '[]');
+      if (employees.length === 0) {
+        showStatus('Please seed employees first!', 'error');
+        return;
+      }
+
+      var today = new Date();
+      var weekStart = getWeekStart(today);
+
+      employees.forEach(function(emp) {
+        var weeklySalary = Math.round(emp.salary / 52);
+        var deductions = emp.deductions || { sss: 300, philhealth: 250, pagibig: 200 };
+        var totalDeductions = deductions.sss + deductions.philhealth + deductions.pagibig;
+        var netPay = weeklySalary - totalDeductions;
+
+        var payslips = [{
+          id: 'payslip_' + emp.id + '_' + Date.now(),
+          weekStart: weekStart,
+          weekKey: weekStart,
+          grossPay: weeklySalary,
+          sss: deductions.sss,
+          philhealth: deductions.philhealth,
+          pagibig: deductions.pagibig,
+          lateDeduction: 0,
+          totalDeductions: totalDeductions,
+          netPay: netPay,
+          status: 'Pending',
+          created: new Date().toISOString()
+        }];
+
+        localStorage.setItem('employee_payslips_' + emp.id, JSON.stringify(payslips));
+      });
+
+      updateCounts();
+      showStatus('Seeded payslips for all employees!', 'success');
+    }
+
+    function viewPayslips() {
+      var el = document.getElementById('payslipPreview');
+      var allPayslips = [];
+      for (var key in localStorage) {
+        if (key.indexOf('employee_payslips_') === 0) {
+          var empId = key.replace('employee_payslips_', '');
+          var payslips = JSON.parse(localStorage.getItem(key) || '[]');
+          payslips.forEach(function(p) {
+            p._empId = empId;
+            allPayslips.push(p);
+          });
+        }
+      }
+      el.textContent = JSON.stringify(allPayslips.slice(0, 5), null, 2) + (allPayslips.length > 5 ? '\n\n... and ' + (allPayslips.length - 5) + ' more' : '');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function clearPayslips() {
+      var keysToRemove = [];
+      for (var key in localStorage) {
+        if (key.indexOf('employee_payslips_') === 0) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
+      updateCounts();
+      showStatus('Cleared all payslips', 'info');
+    }
+
+    function seedAll() {
+      seedEmployees();
+      setTimeout(function() {
+        seedAttendance();
+        setTimeout(function() {
+          seedLeaves();
+          setTimeout(function() {
+            seedPayslips();
+            showStatus('All test data seeded successfully!', 'success');
+          }, 100);
+        }, 100);
+      }, 100);
+    }
+
+    function clearAll() {
+      clearEmployees();
+      clearAttendance();
+      clearLeaves();
+      clearPayslips();
+      localStorage.removeItem('payroll_archive');
+      showStatus('All data cleared!', 'info');
+    }
+
+    // Debug: show all localStorage data
+    function debugShowAll() {
+      var el = document.getElementById('debugPreview');
+      var output = '=== LOCALSTORAGE DEBUG ===\n\n';
+
+      // Show payroll_credentials
+      var creds = JSON.parse(localStorage.getItem('payroll_credentials') || '{}');
+      output += '--- PAYROLL_CREDENTIALS ---\n';
+      output += 'Total entries: ' + Object.keys(creds).length + '\n';
+      for (var id in creds) {
+        output += '  [' + id + ']: ' + (creds[id].fullname || creds[id].username || 'Unknown') + ' (' + (creds[id].email || 'no email') + ')\n';
+        if (creds[id].role) output += '    role: ' + creds[id].role + '\n';
+      }
+      output += '\n';
+
+      // Show payroll_employees
+      var emps = JSON.parse(localStorage.getItem('payroll_employees') || '[]');
+      output += '--- PAYROLL_EMPLOYEES ---\n';
+      output += 'Total entries: ' + emps.length + '\n';
+      emps.forEach(function(e) {
+        output += '  [' + e.id + ']: ' + (e.name || 'Unknown') + ' - ' + (e.role || 'No role') + '\n';
+      });
+      output += '\n';
+
+      // Find mismatches
+      output += '--- DATA INTEGRITY CHECK ---\n';
+      var credIds = Object.keys(creds);
+      var empIds = emps.map(function(e) { return String(e.id); });
+
+      // Check for credentials without employees
+      var missingFromEmployees = credIds.filter(function(id) { return empIds.indexOf(id) === -1; });
+      if (missingFromEmployees.length > 0) {
+        output += 'WARNING: In credentials but NOT in employees:\n';
+        missingFromEmployees.forEach(function(id) {
+          output += '  [' + id + ']: ' + (creds[id].fullname || creds[id].username) + '\n';
+        });
+      } else {
+        output += 'OK: All credentials have matching employee entries\n';
+      }
+
+      // Check for employees without credentials
+      var missingFromCreds = empIds.filter(function(id) { return credIds.indexOf(id) === -1; });
+      if (missingFromCreds.length > 0) {
+        output += 'INFO: In employees but NOT in credentials (test/seeded data):\n';
+        missingFromCreds.forEach(function(id) {
+          var emp = emps.find(function(e) { return String(e.id) === id; });
+          output += '  [' + id + ']: ' + (emp ? emp.name : 'Unknown') + '\n';
+        });
+      }
+
+      output += '\n--- OTHER DATA ---\n';
+      output += 'Attendance records: ' + JSON.parse(localStorage.getItem('payroll_attendance') || '[]').length + '\n';
+
+      // Count leaves and payslips
+      var leaveCount = 0, payslipCount = 0;
+      for (var key in localStorage) {
+        if (key.indexOf('employee_requests_') === 0) {
+          leaveCount += JSON.parse(localStorage.getItem(key) || '[]').length;
+        }
+        if (key.indexOf('employee_payslips_') === 0) {
+          payslipCount += JSON.parse(localStorage.getItem(key) || '[]').length;
+        }
+      }
+      output += 'Leave requests: ' + leaveCount + '\n';
+      output += 'Payslips: ' + payslipCount + '\n';
+
+      el.textContent = output;
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Force sync: rebuild employees from credentials
+    function forceSyncFromCredentials() {
+      var creds = JSON.parse(localStorage.getItem('payroll_credentials') || '{}');
+      var employees = JSON.parse(localStorage.getItem('payroll_employees') || '[]');
+      var existingIds = employees.map(function(e) { return String(e.id); });
+
+      var added = 0;
+      for (var empId in creds) {
+        if (existingIds.indexOf(String(empId)) === -1) {
+          var cred = creds[empId];
+          employees.push({
+            id: empId,
+            name: cred.fullname || cred.username || 'Unknown',
+            role: cred.role || 'Employee',
+            salary: 3060 * 52,
+            lastNet: '—',
+            deductions: { sss: 300, philhealth: 250, pagibig: 200 }
+          });
+          added++;
+          existingIds.push(String(empId));
+        }
+      }
+
+      if (added > 0) {
+        localStorage.setItem('payroll_employees', JSON.stringify(employees));
+        showStatus('Force synced ' + added + ' employee(s) from credentials!', 'success');
+      } else {
+        showStatus('All employees are already synced.', 'info');
+      }
+      updateCounts();
+    }
+
+    // Initialize
+    updateCounts();
+  </script>
+</body>
+</html>
