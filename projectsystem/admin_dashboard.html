@@ -212,11 +212,22 @@
         </div>
 
         <!-- Pagination stays visible below the scrollable table -->
-        <div class="attendance-pagination" style="display:flex;align-items:center;justify-content:flex-end;margin-top:12px;gap:12px">
-          <span id="attendanceRecordCount" style="color:#6b7280;font-size:13px"></span>
-          <button id="attendancePrev" class="secondary" style="padding:8px 16px">◀ Previous</button>
-          <div id="attendancePageIndicator" style="min-width:80px;text-align:center;padding:8px 12px;border-radius:6px;background:#1e3a5f;color:#fff;font-weight:600">1 / 1</div>
-          <button id="attendanceNext" class="secondary" style="padding:8px 16px">Next ▶</button>
+        <div class="attendance-pagination" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px">
+            <label for="attendancePageSize" style="color:#6b7280;font-size:13px">Show:</label>
+            <select id="attendancePageSize" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;background:#fff">
+              <option value="15">15</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="all">All</option>
+            </select>
+            <span id="attendanceRecordCount" style="color:#6b7280;font-size:13px"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button id="attendancePrev" class="secondary" style="padding:8px 16px">◀ Previous</button>
+            <div id="attendancePageIndicator" style="min-width:80px;text-align:center;padding:8px 12px;border-radius:6px;background:#1e3a5f;color:#fff;font-weight:600">1 / 1</div>
+            <button id="attendanceNext" class="secondary" style="padding:8px 16px">Next ▶</button>
+          </div>
         </div>
       </div>
     </div>

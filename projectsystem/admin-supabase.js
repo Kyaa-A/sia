@@ -280,7 +280,7 @@
 
   // Attendance pagination and week filter state
   let attendancePage = 1;
-  const attendancePerPage = 15;
+  let attendancePerPage = 15;
   let attendanceSearchQuery = '';
   let attendanceWeekOffset = 0;
 
@@ -326,17 +326,20 @@
 
     if (sorted.length === 0) {
       els.attendanceTbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#6b7280">No attendance records for this week</td></tr>';
-      updateAttendancePagination(0, 0, 0);
+      updateAttendancePagination(0, 0, 0, 0, 0);
       return;
     }
 
-    // Paginate
-    const totalPages = Math.ceil(sorted.length / attendancePerPage);
+    // Paginate (handle "all" option)
+    const showAll = attendancePerPage === 'all' || attendancePerPage >= sorted.length;
+    const perPage = showAll ? sorted.length : attendancePerPage;
+    const totalPages = showAll ? 1 : Math.ceil(sorted.length / perPage);
     if (attendancePage > totalPages) attendancePage = totalPages;
     if (attendancePage < 1) attendancePage = 1;
 
-    const startIndex = (attendancePage - 1) * attendancePerPage;
-    const pageData = sorted.slice(startIndex, startIndex + attendancePerPage);
+    const startIndex = showAll ? 0 : (attendancePage - 1) * perPage;
+    const endIndex = showAll ? sorted.length : startIndex + perPage;
+    const pageData = sorted.slice(startIndex, endIndex);
 
     pageData.forEach(att => {
       const emp = att.employees || {};
@@ -371,8 +374,16 @@
       els.attendanceTbody.appendChild(tr);
     });
 
-    updateAttendancePagination(attendancePage, totalPages, sorted.length);
+    updateAttendancePagination(attendancePage, totalPages, sorted.length, startIndex + 1, Math.min(endIndex, sorted.length));
   }
+
+  // Page size selector
+  document.getElementById('attendancePageSize')?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    attendancePerPage = val === 'all' ? 'all' : parseInt(val, 10);
+    attendancePage = 1;
+    renderAttendance();
+  });
 
   // Attendance week navigation
   document.getElementById('attWeekPrev')?.addEventListener('click', () => {
@@ -387,14 +398,14 @@
     renderAttendance();
   });
 
-  function updateAttendancePagination(current, total, recordCount) {
+  function updateAttendancePagination(current, total, recordCount, rangeStart, rangeEnd) {
     const indicator = document.getElementById('attendancePageIndicator');
     const prevBtn = document.getElementById('attendancePrev');
     const nextBtn = document.getElementById('attendanceNext');
     const countEl = document.getElementById('attendanceRecordCount');
 
     // Handle empty state
-    if (total === 0) {
+    if (total === 0 || recordCount === 0) {
       if (indicator) indicator.textContent = '0 / 0';
       if (prevBtn) prevBtn.disabled = true;
       if (nextBtn) nextBtn.disabled = true;
@@ -405,7 +416,7 @@
     if (indicator) indicator.textContent = `${current} / ${total}`;
     if (prevBtn) prevBtn.disabled = current <= 1;
     if (nextBtn) nextBtn.disabled = current >= total;
-    if (countEl) countEl.textContent = `${recordCount || 0} record${recordCount !== 1 ? 's' : ''}`;
+    if (countEl) countEl.textContent = `Showing ${rangeStart}-${rangeEnd} of ${recordCount}`;
   }
 
   function renderArchive() {
