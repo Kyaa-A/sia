@@ -471,10 +471,16 @@
 
   function generatePDF(payslip, logoImg) {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    // Receipt size: half of A4 height (portrait), width stays same
+    // A4 is 210 x 297mm, so half lengthwise is 210 x 148mm
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [210, 148]  // width x height (half A4 length)
+    });
 
     const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 25;
+    let y = 15;
 
     // Format week dates nicely (Dec 15 - 21)
     const startDate = new Date(payslip.week_start);
@@ -483,47 +489,47 @@
     const weekLabel = `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
 
     // Header
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('PAYROLL - PAYSLIP', pageWidth / 2, y, { align: 'center' });
 
-    y += 6;
-    doc.setFontSize(10);
+    y += 5;
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(`Week: ${weekLabel}`, pageWidth / 2, y, { align: 'center' });
 
     // Company logo (top right)
     if (logoImg) {
       try {
-        doc.addImage(logoImg, 'PNG', pageWidth - 45, 10, 35, 20);
+        doc.addImage(logoImg, 'PNG', pageWidth - 40, 8, 30, 17);
       } catch (e) {
         console.log('Could not add logo to PDF');
       }
     }
 
     // Employee info
-    y += 10;
-    doc.setFontSize(11);
+    y += 8;
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text(currentEmployee.name, pageWidth / 2, y, { align: 'center' });
-    y += 5;
+    y += 4;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.text(currentEmployee.id, pageWidth / 2, y, { align: 'center' });
 
     // Rate per day (weekly salary / 6 working days)
-    y += 10;
+    y += 8;
     const dailyRate = currentEmployee.salary ? (currentEmployee.salary / 6) : 0;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });
 
     // Table
-    y += 12;
-    const tableX = 40;
-    const tableWidth = pageWidth - 80;
-    const col1Width = tableWidth - 50;
-    const rowHeight = 10;
+    y += 8;
+    const tableX = 25;
+    const tableWidth = pageWidth - 50;
+    const col1Width = tableWidth - 35;
+    const rowHeight = 7;
 
     // Draw table rows
     const rows = [
@@ -538,19 +544,18 @@
     ];
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
 
     const tableStartY = y;
 
     rows.forEach((row, index) => {
-      // Row background alternating (optional, skip for clean look)
       // Draw horizontal line at top of row
       doc.line(tableX, y, tableX + tableWidth, y);
 
       // Draw text
       doc.setFont('helvetica', index >= 6 ? 'bold' : 'normal');
-      doc.text(row[0], tableX + 3, y + 7);
-      doc.text(row[1], tableX + tableWidth - 3, y + 7, { align: 'right' });
+      doc.text(row[0], tableX + 2, y + 5);
+      doc.text(row[1], tableX + tableWidth - 2, y + 5, { align: 'right' });
 
       y += rowHeight;
     });
@@ -565,12 +570,12 @@
     doc.line(tableX + col1Width, tableStartY, tableX + col1Width, y);
 
     // Footer (centered)
-    y += 18;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text('Received by: _____________________', pageWidth / 2, y, { align: 'center' });
     y += 10;
-    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('Received by: _____________________', pageWidth / 2, y, { align: 'center' });
+    y += 6;
+    doc.setFontSize(8);
     doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, pageWidth / 2, y, { align: 'center' });
 
     // Download
