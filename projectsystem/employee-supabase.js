@@ -497,10 +497,10 @@
     doc.setFont('helvetica', 'normal');
     doc.text(`Week: ${weekLabel}`, pageWidth / 2, y, { align: 'center' });
 
-    // Company logo (top right)
+    // Company logo (top right) - maintain square aspect ratio
     if (logoImg) {
       try {
-        doc.addImage(logoImg, 'PNG', pageWidth - 45, 10, 35, 18);
+        doc.addImage(logoImg, 'PNG', pageWidth - 35, 12, 25, 15);
       } catch (e) {
         console.log('Could not add logo to PDF');
       }
@@ -523,11 +523,11 @@
     doc.setFontSize(11);
     doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });
 
-    // Table
+    // Table - wider to prevent text overlap
     y += 10;
-    const tableX = 30;
-    const tableWidth = pageWidth - 60;
-    const col1Width = tableWidth - 45;
+    const tableX = 15;
+    const tableWidth = pageWidth - 30;
+    const col1Width = tableWidth - 50;
     const rowHeight = 9;
 
     // Draw table rows
