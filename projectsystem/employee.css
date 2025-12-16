@@ -114,7 +114,7 @@ body {
 
 .admin-status {
   font-size: 12px;
-  color: #9ca3af;
+  color: #d1d5db;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -335,7 +335,7 @@ button:not(.secondary):not(.warn):not(.logout-btn-sidebar):not(.toast-close):hov
 .secondary {
   background: transparent !important;
   color: #1e3a5f !important;
-  border: 2px solid #d1d5db !important;
+  border: 2px solid #9ca3af !important;
   padding: 8px 16px;
   border-radius: 8px;
   font-weight: 500;
@@ -469,7 +469,7 @@ select {
    Utility Classes
    ============================================ */
 .muted {
-  color: #6b7280 !important;
+  color: #4b5563 !important;
 }
 
 #requestsList {

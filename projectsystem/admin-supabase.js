@@ -325,7 +325,7 @@
     });
 
     if (sorted.length === 0) {
-      els.attendanceTbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#6b7280">No attendance records for this week</td></tr>';
+      els.attendanceTbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#4b5563">No attendance records for this week</td></tr>';
       updateAttendancePagination(0, 0, 0, 0, 0);
       return;
     }
@@ -360,14 +360,14 @@
         <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${att.date}</td>
         <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">
           <div style="font-weight:600">${emp.name || '—'}</div>
-          <div style="font-size:12px;color:#6b7280">${att.employee_id}</div>
+          <div style="font-size:12px;color:#4b5563">${att.employee_id}</div>
         </td>
-        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee;font-size:12px;color:#6b7280">${att.id ? att.id.substring(0, 8) + '...' : '—'}</td>
+        <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee;font-size:12px;color:#4b5563">${att.id ? att.id.substring(0, 8) + '...' : '—'}</td>
         <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${att.time_in ? new Date(att.time_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'}</td>
         <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">${att.time_out ? new Date(att.time_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—'}</td>
         <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee">
           <div>${workedHours}</div>
-          <div style="font-size:11px;color:#6b7280">paid: ${payableHours}</div>
+          <div style="font-size:11px;color:#4b5563">paid: ${payableHours}</div>
         </td>
         <td style="padding:12px 8px;border-bottom:1px solid #e6e9ee;${statusClass};font-weight:600">${statusText}</td>
       `;
@@ -433,7 +433,7 @@
     els.archiveTbody.innerHTML = '';
 
     if (archivedEmployees.length === 0) {
-      els.archiveTbody.innerHTML = '<tr><td colspan="6" style="padding:24px;text-align:center;color:#6b7280">No archived employees</td></tr>';
+      els.archiveTbody.innerHTML = '<tr><td colspan="6" style="padding:24px;text-align:center;color:#4b5563">No archived employees</td></tr>';
       return;
     }
 
@@ -462,7 +462,7 @@
     const sorted = [...leaveRequests].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     if (sorted.length === 0) {
-      els.leavesTbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#6b7280">No leave requests found</td></tr>';
+      els.leavesTbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#4b5563">No leave requests found</td></tr>';
       return;
     }
 
@@ -843,7 +843,7 @@
     `;
 
     if (employees.length === 0) {
-      html += `<tr><td colspan="7" style="padding:24px;text-align:center;color:#6b7280">No employees found</td></tr>`;
+      html += `<tr><td colspan="7" style="padding:24px;text-align:center;color:#4b5563">No employees found</td></tr>`;
     } else {
       employees.forEach(emp => {
         const todayAtt = attendance.find(a => a.employee_id === emp.id && a.date === today);
@@ -872,7 +872,7 @@
         } else if (!hasTimeOut) {
           actionBtn = `<button onclick="clockOut('${emp.id}')" style="background:#ef4444;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Time Out</button>`;
         } else {
-          actionBtn = `<span style="color:#6b7280">Done for today</span>`;
+          actionBtn = `<span style="color:#4b5563">Done for today</span>`;
         }
 
         html += `
@@ -1191,7 +1191,7 @@
       row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-bottom:1px solid #f1f5f9;';
 
       const left = document.createElement('div');
-      left.innerHTML = `<div style="font-weight:600;font-size:13px;color:#1f2937">${emp.name || emp.id}</div><div style="font-size:12px;color:#6b7280">${emp.id}</div>`;
+      left.innerHTML = `<div style="font-weight:600;font-size:13px;color:#1f2937">${emp.name || emp.id}</div><div style="font-size:12px;color:#4b5563">${emp.id}</div>`;
 
       const right = document.createElement('div');
       right.style.textAlign = 'right';
@@ -1208,7 +1208,7 @@
       } else {
         const noPayslip = document.createElement('span');
         noPayslip.textContent = 'No payslip';
-        noPayslip.style.cssText = 'font-size:11px;color:#9ca3af;';
+        noPayslip.style.cssText = 'font-size:11px;color:#6b7280;';
         right.appendChild(noPayslip);
       }
 
@@ -1264,7 +1264,7 @@
     const html = `<!DOCTYPE html><html><head><title>Payslip Status ${weekLabel}</title>
       <style>body{font-family:Arial,sans-serif;padding:20px;color:#333}h1{font-size:18px;margin-bottom:20px}
       table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px;text-align:left;border-bottom:1px solid #ddd}
-      th{background:#f8f9fa;font-weight:600}tr:hover{background:#f5f5f5}.footer{margin-top:20px;font-size:11px;color:#666}
+      th{background:#f8f9fa;font-weight:600}tr:hover{background:#f5f5f5}.footer{margin-top:20px;font-size:11px;color:#4b5563}
       @media print{body{padding:10px}}</style></head>
       <body><h1>Payslip Status ${weekLabel}</h1>
       <table><thead><tr><th>EMP ID</th><th>Name</th><th>Status</th><th>Performance (wk)</th></tr></thead><tbody>
@@ -1303,7 +1303,7 @@
     const html = `<!DOCTYPE html><html><head><title>Attendance Report ${weekLabel}</title>
       <style>body{font-family:Arial,sans-serif;padding:20px;color:#333}h1{font-size:18px;margin-bottom:20px}
       table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd}
-      th{background:#f8f9fa;font-weight:600}tr:hover{background:#f5f5f5}.footer{margin-top:20px;font-size:11px;color:#666}
+      th{background:#f8f9fa;font-weight:600}tr:hover{background:#f5f5f5}.footer{margin-top:20px;font-size:11px;color:#4b5563}
       @media print{body{padding:10px}}</style></head>
       <body><h1>Attendance Report ${weekLabel}</h1>
       <table><thead><tr><th>Date</th><th>Employee ID</th><th>Name</th><th>Time In</th><th>Time Out</th><th>Attendance ID</th></tr></thead><tbody>

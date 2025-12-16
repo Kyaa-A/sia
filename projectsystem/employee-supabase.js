@@ -223,7 +223,7 @@
     tbody.innerHTML = '';
 
     if (monthPayslips.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#6b7280;padding:24px">No payslips for this month</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4b5563;padding:24px">No payslips for this month</td></tr>';
       return;
     }
 
@@ -257,7 +257,7 @@
     tbody.innerHTML = '';
 
     if (leaveRequests.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#6b7280;padding:24px">No leave requests</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#4b5563;padding:24px">No leave requests</td></tr>';
       return;
     }
 
