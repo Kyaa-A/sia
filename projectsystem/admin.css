@@ -794,3 +794,191 @@ input[type=text]:focus, input[type=number]:focus, select:focus {
   height: auto !important;
   min-height: 150px;
 }
+
+/* ============================================
+   Enhanced Mobile Responsiveness
+   ============================================ */
+
+/* Table scroll wrapper for mobile */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -12px;
+  padding: 0 12px;
+}
+
+/* Better stats grid for tablets */
+@media (max-width: 900px) {
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .layout > aside {
+    order: -1;
+  }
+}
+
+/* Mobile form improvements */
+@media (max-width: 768px) {
+  .row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .row .col {
+    width: 100%;
+  }
+
+  /* Inline payroll form responsive */
+  #payrollInlineForm .row,
+  #payrollInlineForm [style*="display:flex"][style*="gap"] {
+    flex-direction: column !important;
+  }
+
+  /* Modal full width on mobile */
+  .modal {
+    margin: 12px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+  }
+
+  /* Table text smaller */
+  table {
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 8px 6px;
+    white-space: nowrap;
+  }
+
+  /* Actions buttons stack */
+  .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .actions button {
+    width: 100%;
+    margin: 0 !important;
+  }
+
+  /* Stat cards */
+  .stat {
+    padding: 14px;
+  }
+
+  .stat h3 {
+    font-size: 13px;
+  }
+
+  /* Week navigation */
+  [id*="WeekPrev"], [id*="WeekNext"],
+  [id*="weekPrev"], [id*="weekNext"] {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* Search input full width */
+  .search, #perfSearchInput {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  /* Hide less important columns on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+  .dashboard > div:not(header) {
+    padding: 12px;
+    padding-top: 66px;
+  }
+
+  header {
+    padding: 12px;
+    padding-top: 66px;
+  }
+
+  header h1 {
+    font-size: 16px;
+  }
+
+  .card {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  .section h2 {
+    font-size: 15px;
+  }
+
+  table {
+    font-size: 11px;
+  }
+
+  th, td {
+    padding: 6px 4px;
+  }
+
+  button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Stats 2 columns on small mobile */
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .stat {
+    padding: 12px;
+  }
+
+  /* Payslip sidebar */
+  #sidePayslipList {
+    min-height: 180px !important;
+  }
+
+  /* Week label smaller */
+  [id*="WeekLabel"], [id*="weekLabel"] {
+    font-size: 12px !important;
+    min-width: unset !important;
+  }
+}
+
+/* Landscape phone */
+@media (max-width: 768px) and (orientation: landscape) {
+  .sidebar {
+    width: 220px;
+  }
+
+  .modal {
+    max-height: 90vh;
+  }
+}
+
+/* Print styles */
+@media print {
+  .sidebar, .mobile-menu-toggle, .sidebar-overlay {
+    display: none !important;
+  }
+
+  .dashboard {
+    margin-left: 0 !important;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}

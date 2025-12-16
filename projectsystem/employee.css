@@ -680,3 +680,167 @@ select {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ============================================
+   Enhanced Mobile & Tablet Responsiveness
+   ============================================ */
+
+/* Table scroll wrapper */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Tablet specific */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .layout > aside {
+    order: -1;
+  }
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+  /* Form stacking */
+  #leaveForm [style*="display:flex"][style*="gap"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  /* Date inputs full width */
+  #leaveFrom, #leaveTo {
+    width: 100% !important;
+  }
+
+  /* Leave table scroll */
+  #myRequestsTable {
+    display: block;
+    overflow-x: auto;
+  }
+
+  /* Hide less important columns */
+  #myRequestsTable th:nth-child(4),
+  #myRequestsTable td:nth-child(4) {
+    display: none;
+  }
+
+  /* Payslip navigation */
+  #payslipPrevMonth, #payslipNextMonth {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+
+  #payslipMonthLabel {
+    font-size: 12px !important;
+    min-width: 120px !important;
+  }
+
+  /* Profile card responsive */
+  .card.section [style*="display:flex"][style*="gap:18px"] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  /* Right sidebar card */
+  #rightCard {
+    min-width: unset !important;
+    height: auto !important;
+  }
+
+  /* Request buttons */
+  #requestsSection button[type="submit"],
+  #requestsSection button[type="reset"] {
+    flex: 1;
+    min-width: 100px;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+  /* Smaller payslip table */
+  #payslipTable th,
+  #payslipTable td {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+
+  /* Stack action buttons in payslip table */
+  #payslipTable td:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  #payslipTable td:last-child button {
+    width: 100%;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+
+  /* My requests table mobile */
+  #myRequestsTable th,
+  #myRequestsTable td {
+    padding: 6px 4px;
+    font-size: 10px;
+  }
+
+  /* Hide more columns on very small screens */
+  #myRequestsTable th:nth-child(1),
+  #myRequestsTable td:nth-child(1),
+  #myRequestsTable th:nth-child(5),
+  #myRequestsTable td:nth-child(5) {
+    display: none;
+  }
+
+  /* Smaller profile avatar */
+  .card.section [style*="width:72px"] {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 20px !important;
+  }
+}
+
+/* Landscape orientation */
+@media (max-width: 768px) and (orientation: landscape) {
+  .layout {
+    padding: 12px;
+    padding-top: 60px;
+  }
+
+  .sidebar {
+    width: 220px;
+  }
+
+  .modal {
+    max-height: 85vh;
+  }
+}
+
+/* Print styles */
+@media print {
+  .sidebar,
+  .mobile-menu-toggle,
+  .sidebar-overlay,
+  .logout-btn-sidebar {
+    display: none !important;
+  }
+
+  .dashboard {
+    margin-left: 0 !important;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+    break-inside: avoid;
+  }
+
+  button {
+    display: none !important;
+  }
+}
