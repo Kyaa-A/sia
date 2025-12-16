@@ -497,10 +497,10 @@
     doc.setFont('helvetica', 'normal');
     doc.text(`Week: ${weekLabel}`, pageWidth / 2, y, { align: 'center' });
 
-    // Company logo (top right) - proper aspect ratio
+    // Company logo (top right) - square logo 225x225px
     if (logoImg) {
       try {
-        doc.addImage(logoImg, 'PNG', pageWidth - 32, 12, 22, 12);
+        doc.addImage(logoImg, 'PNG', pageWidth - 30, 8, 20, 20);
       } catch (e) {
         console.log('Could not add logo to PDF');
       }

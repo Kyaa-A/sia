@@ -1229,6 +1229,94 @@
     renderSidePayslipList();
   });
 
+  // Print Payslip Status (week)
+  document.getElementById('printSidePayslip')?.addEventListener('click', () => {
+    const weekStart = getOffsetWeekStart(sideWeekOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+    const weekEndStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const weekLabel = `${monthNames[weekStart.getMonth()]} ${weekStart.getDate()} - ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
+
+    // Calculate performance for each employee
+    const rows = employees.map(emp => {
+      const empPayslip = payslips.find(p => p.employee_id === emp.id && p.week_start === weekStartStr);
+      const status = empPayslip ? empPayslip.status : 'No payslip';
+
+      // Calculate performance
+      const empAttendance = attendance.filter(a => a.employee_id === emp.id && a.date >= weekStartStr && a.date <= weekEndStr);
+      const presentDays = empAttendance.length;
+      const lateDays = empAttendance.filter(a => a.late_minutes > 0).length;
+      const absentDays = Math.max(0, 6 - presentDays);
+
+      let perfStatus = 'No data';
+      if (presentDays === 6 && lateDays === 0) perfStatus = 'Perfect attendance';
+      else if (presentDays >= 5 && lateDays <= 1) perfStatus = 'Minor lates';
+      else if (lateDays >= 3) perfStatus = 'Frequently late';
+      else if (presentDays < 4) perfStatus = 'Poor attendance';
+      else perfStatus = 'Irregular attendance';
+
+      return { id: emp.id, name: emp.name, status, perf: `${perfStatus} • ${presentDays}P/${lateDays}L/${absentDays}A` };
+    });
+
+    const html = `<!DOCTYPE html><html><head><title>Payslip Status ${weekLabel}</title>
+      <style>body{font-family:Arial,sans-serif;padding:20px;color:#333}h1{font-size:18px;margin-bottom:20px}
+      table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px;text-align:left;border-bottom:1px solid #ddd}
+      th{background:#f8f9fa;font-weight:600}tr:hover{background:#f5f5f5}.footer{margin-top:20px;font-size:11px;color:#666}
+      @media print{body{padding:10px}}</style></head>
+      <body><h1>Payslip Status ${weekLabel}</h1>
+      <table><thead><tr><th>EMP ID</th><th>Name</th><th>Status</th><th>Performance (wk)</th></tr></thead><tbody>
+      ${rows.map(r => `<tr><td>${r.id}</td><td>${r.name}</td><td>${r.status}</td><td>${r.perf}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="footer">Generated: ${new Date().toLocaleString()}</div>
+      <script>window.print();</script></body></html>`;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(html);
+    printWindow.document.close();
+  });
+
+  // Print Attendance Report (week)
+  document.getElementById('printAttendanceReport')?.addEventListener('click', () => {
+    const weekStart = getOffsetWeekStart(chartWeekOffset);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+    const weekEndStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const weekLabel = `${monthNames[weekStart.getMonth()]} ${weekStart.getDate()} - ${weekEnd.getDate()}, ${weekStart.getFullYear()}`;
+
+    // Get attendance for the week
+    const weekAttendance = attendance.filter(a => a.date >= weekStartStr && a.date <= weekEndStr)
+      .sort((a, b) => b.date.localeCompare(a.date) || a.employee_id.localeCompare(b.employee_id));
+
+    const rows = weekAttendance.map(a => {
+      const emp = employees.find(e => e.id === a.employee_id);
+      const timeIn = a.time_in ? new Date(a.time_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
+      const timeOut = a.time_out ? new Date(a.time_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
+      return { date: a.date, empId: a.employee_id, name: emp?.name || a.employee_id, timeIn, timeOut, attId: a.id };
+    });
+
+    const html = `<!DOCTYPE html><html><head><title>Attendance Report ${weekLabel}</title>
+      <style>body{font-family:Arial,sans-serif;padding:20px;color:#333}h1{font-size:18px;margin-bottom:20px}
+      table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;text-align:left;border-bottom:1px solid #ddd}
+      th{background:#f8f9fa;font-weight:600}tr:hover{background:#f5f5f5}.footer{margin-top:20px;font-size:11px;color:#666}
+      @media print{body{padding:10px}}</style></head>
+      <body><h1>Attendance Report ${weekLabel}</h1>
+      <table><thead><tr><th>Date</th><th>Employee ID</th><th>Name</th><th>Time In</th><th>Time Out</th><th>Attendance ID</th></tr></thead><tbody>
+      ${rows.map(r => `<tr><td>${r.date}</td><td>${r.empId}</td><td>${r.name}</td><td>${r.timeIn}</td><td>${r.timeOut}</td><td>${r.attId}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="footer">Generated: ${new Date().toLocaleString()}</div>
+      <script>window.print();</script></body></html>`;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(html);
+    printWindow.document.close();
+  });
+
   // =============================================
   // PERFORMANCE CHART
   // =============================================
