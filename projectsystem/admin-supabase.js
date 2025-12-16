@@ -997,12 +997,12 @@
 
   function getOffsetWeekStart(offset) {
     const now = new Date();
-    const dayOfWeek = now.getDay();
-    const diff = dayOfWeek; // Days since Sunday
-    const sunday = new Date(now);
-    sunday.setDate(now.getDate() - diff + (offset * 7));
-    sunday.setHours(0, 0, 0, 0);
-    return sunday;
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day; // Monday (same as payroll)
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff + (offset * 7));
+    monday.setHours(0, 0, 0, 0);
+    return monday;
   }
 
   function formatWeekLabel(startDate) {
