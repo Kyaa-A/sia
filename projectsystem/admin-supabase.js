@@ -704,7 +704,7 @@
           const date = new Date(record.date);
           const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
           const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const hours = Number(record.hours_worked) || 0;
+          const hours = Number(record.worked_hours) || 0;
           const late = Number(record.late_minutes) || 0;
           totalHours += hours;
           totalLate += late;
