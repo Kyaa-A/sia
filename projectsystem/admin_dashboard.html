@@ -225,7 +225,8 @@
     <div id="employees" class="section-content">
       <div class="card section">
         <div style="overflow:auto;max-height:600px;padding:12px;background:#fff;border-radius:8px;border:1px solid #eef2f7">
-          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <button id="addEmployeeBtn" style="padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:500">+ Add Employee</button>
             <input id="search" class="search" placeholder="Search by name, role, or id" style="width:340px;padding:8px" />
           </div>
           <table id="employeesTable">
@@ -284,16 +285,27 @@
   
             <!-- Inline Run Payroll form (moved from modal) -->
             <div id="payrollInlineForm" style="background:#ffffff;padding:12px;border-radius:8px;border:1px solid #eef2f7;display:flex;flex-direction:column;gap:12px">
-              <div style="display:flex;gap:12px;align-items:center">
+              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                <div style="display:flex;flex-direction:column">
+                  <label style="font-weight:600">Pay Period</label>
+                  <select id="payrollPeriodType" style="padding:8px;min-width:120px">
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
                 <div style="display:flex;flex-direction:column">
                   <label style="font-weight:600">Employee</label>
                   <select id="payrollInlineEmployeeSelect" style="padding:8px;min-width:220px"></select>
                 </div>
-                <div style="display:flex;flex-direction:column">
+                <div id="weekSelectorContainer" style="display:flex;flex-direction:column">
                   <label style="font-weight:600">Week</label>
                   <select id="payrollInlineWeekSelect" style="padding:8px;min-width:160px"></select>
                 </div>
-                <div style="margin-left:auto;color:#6b7280;font-size:13px">Each day = ₱510 (8h)</div>
+                <div id="monthSelectorContainer" style="display:none;flex-direction:column">
+                  <label style="font-weight:600">Month</label>
+                  <select id="payrollInlineMonthSelect" style="padding:8px;min-width:160px"></select>
+                </div>
+                <div id="payrollRateNote" style="margin-left:auto;color:#6b7280;font-size:13px">Weekly: Daily Rate × 6 days</div>
               </div>
 
               <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
@@ -442,6 +454,14 @@
       <form id="employeeForm">
         <label for="empName">Full name</label>
         <input id="empName" type="text" required />
+        <div id="newEmployeeFields" style="display:none">
+          <label for="empEmail">Email</label>
+          <input id="empEmail" type="email" placeholder="employee@example.com" />
+          <label for="empUsername">Username</label>
+          <input id="empUsername" type="text" placeholder="username" />
+          <label for="empPassword">Password</label>
+          <input id="empPassword" type="password" placeholder="min 6 characters" />
+        </div>
         <label for="empRole">Role</label>
         <select id="empRole" required style="padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;font-family:Arial;width:100%;background:#fff;color:#111">
           <option value="" disabled selected>Select Role</option>

@@ -539,6 +539,7 @@ const db = {
         employee_id: payslip.employeeId,
         week_start: payslip.weekStart,
         week_end: payslip.weekEnd,
+        period_type: payslip.periodType || 'weekly',
         gross_pay: payslip.grossPay,
         sss: payslip.sss || 0,
         philhealth: payslip.philhealth || 0,

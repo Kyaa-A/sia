@@ -573,21 +573,25 @@
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 18;
 
-    // Format week dates nicely (Dec 15 - 21)
+    // Format period dates nicely
     const startDate = new Date(payslip.week_start);
     const endDate = new Date(payslip.week_end);
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const weekLabel = `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
+    const isMonthly = payslip.period_type === 'monthly';
+    const periodLabel = isMonthly
+      ? `${monthNames[startDate.getMonth()]} ${startDate.getFullYear()}`
+      : `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
+    const periodTypeLabel = isMonthly ? 'MONTHLY' : 'WEEKLY';
 
     // Header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('PAYROLL - PAYSLIP', pageWidth / 2, y, { align: 'center' });
+    doc.text(`PAYROLL - PAYSLIP (${periodTypeLabel})`, pageWidth / 2, y, { align: 'center' });
 
     y += 6;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Week: ${weekLabel}`, pageWidth / 2, y, { align: 'center' });
+    doc.text(`Period: ${periodLabel}`, pageWidth / 2, y, { align: 'center' });
 
     // Company logo (top right) - square logo 225x225px
     if (logoImg) {
@@ -623,6 +627,7 @@
     const rowHeight = 9;
 
     // Draw table rows
+    const periodSuffix = isMonthly ? 'month' : 'week';
     const rows = [
       ['Worked Hours (actual)', `${payslip.worked_hours || 0} h`],
       ['Payable Hours (capped)', `${payslip.payable_hours || 0} h`],
@@ -630,8 +635,8 @@
       ['SSS', `P${Number(payslip.sss || 300)}`],
       ['PhilHealth', `P${Number(payslip.philhealth || 250)}`],
       ['Pag-IBIG', `P${Number(payslip.pagibig || 200)}`],
-      ['Gross (week)', `P${Number(payslip.gross_pay || 0)}`],
-      ['Net (week)', `P${Number(payslip.net_pay || 0)}`]
+      [`Gross (${periodSuffix})`, `P${Number(payslip.gross_pay || 0)}`],
+      [`Net (${periodSuffix})`, `P${Number(payslip.net_pay || 0)}`]
     ];
 
     doc.setFont('helvetica', 'normal');

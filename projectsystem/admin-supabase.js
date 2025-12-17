@@ -589,7 +589,8 @@
         <thead>
           <tr>
             <th style="padding:12px;border-bottom:2px solid #e5e7eb;text-align:left">Employee</th>
-            <th style="padding:12px;border-bottom:2px solid #e5e7eb;text-align:left">Week</th>
+            <th style="padding:12px;border-bottom:2px solid #e5e7eb;text-align:left">Period</th>
+            <th style="padding:12px;border-bottom:2px solid #e5e7eb;text-align:center">Type</th>
             <th style="padding:12px;border-bottom:2px solid #e5e7eb;text-align:right">Gross Pay</th>
             <th style="padding:12px;border-bottom:2px solid #e5e7eb;text-align:right">Deductions</th>
             <th style="padding:12px;border-bottom:2px solid #e5e7eb;text-align:right">Net Pay</th>
@@ -605,10 +606,16 @@
       const statusClass = slip.status === 'Approved' ? 'background:#d1fae5;color:#065f46' :
                          slip.status === 'Rejected' ? 'background:#fee2e2;color:#991b1b' :
                          'background:#fef3c7;color:#92400e';
+      const periodType = slip.period_type || 'weekly';
+      const periodTypeLabel = periodType === 'monthly' ? 'Monthly' : 'Weekly';
+      const periodTypeColor = periodType === 'monthly' ? 'background:#dbeafe;color:#1e40af' : 'background:#f3e8ff;color:#6b21a8';
       html += `
         <tr>
           <td style="padding:12px;border-bottom:1px solid #e5e7eb">${emp.name || slip.employee_id}</td>
           <td style="padding:12px;border-bottom:1px solid #e5e7eb">${slip.week_start} to ${slip.week_end}</td>
+          <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:center">
+            <span style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;${periodTypeColor}">${periodTypeLabel}</span>
+          </td>
           <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right">${db.formatCurrency(slip.gross_pay)}</td>
           <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;color:#ef4444">-${db.formatCurrency(slip.total_deductions)}</td>
           <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:#10b981">${db.formatCurrency(slip.net_pay)}</td>
@@ -928,10 +935,16 @@
   // PAYROLL
   // =============================================
   let payrollWeekOffset = 0;
+  let currentPayPeriodType = 'weekly'; // 'weekly' or 'monthly'
 
   function renderPayroll() {
     const employeeSelect = document.getElementById('payrollInlineEmployeeSelect');
     const weekSelect = document.getElementById('payrollInlineWeekSelect');
+    const monthSelect = document.getElementById('payrollInlineMonthSelect');
+    const periodTypeSelect = document.getElementById('payrollPeriodType');
+    const weekContainer = document.getElementById('weekSelectorContainer');
+    const monthContainer = document.getElementById('monthSelectorContainer');
+    const rateNote = document.getElementById('payrollRateNote');
 
     if (!employeeSelect || !weekSelect) return;
 
@@ -951,6 +964,20 @@
       weekSelect.innerHTML += `<option value="${weekStart}">${label}${isCurrentWeek}</option>`;
     }
 
+    // Populate month dropdown (last 6 months)
+    if (monthSelect) {
+      monthSelect.innerHTML = '';
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const now = new Date();
+      for (let i = 0; i < 6; i++) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthStart = date.toISOString().split('T')[0];
+        const label = `${months[date.getMonth()]} ${date.getFullYear()}`;
+        const isCurrent = i === 0 ? ' (Current)' : '';
+        monthSelect.innerHTML += `<option value="${monthStart}">${label}${isCurrent}</option>`;
+      }
+    }
+
     // Reset calculation display
     resetPayrollCalculation();
 
@@ -958,6 +985,22 @@
     if (!employeeSelect.dataset.listenersAttached) {
       employeeSelect.addEventListener('change', () => calculatePayroll(true));
       weekSelect.addEventListener('change', () => calculatePayroll(true));
+      if (monthSelect) monthSelect.addEventListener('change', () => calculatePayroll(true));
+
+      // Pay period type toggle
+      if (periodTypeSelect) {
+        periodTypeSelect.addEventListener('change', (e) => {
+          currentPayPeriodType = e.target.value;
+          if (weekContainer) weekContainer.style.display = currentPayPeriodType === 'weekly' ? 'flex' : 'none';
+          if (monthContainer) monthContainer.style.display = currentPayPeriodType === 'monthly' ? 'flex' : 'none';
+          if (rateNote) {
+            rateNote.textContent = currentPayPeriodType === 'weekly'
+              ? 'Weekly: Daily Rate × 6 days'
+              : 'Monthly: Daily Rate × days worked';
+          }
+          calculatePayroll(true);
+        });
+      }
 
       const lateHoursInput = document.getElementById('payrollInlineLateHours');
       const lateMinutesInput = document.getElementById('payrollInlineLateMinutes');
@@ -995,6 +1038,23 @@
     return `${months[startDate.getMonth()]} ${startDate.getDate()} - ${months[endDate.getMonth()]} ${endDate.getDate()}`;
   }
 
+  function getMonthEnd(monthStart) {
+    const d = new Date(monthStart + 'T00:00:00');
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return lastDay.toISOString().split('T')[0];
+  }
+
+  function getWorkingDaysInMonth(monthStart) {
+    const start = new Date(monthStart + 'T00:00:00');
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    let count = 0;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      if (day !== 0) count++; // Exclude Sundays (0), count Mon-Sat
+    }
+    return count;
+  }
+
   function resetPayrollCalculation() {
     const els = {
       days: document.getElementById('payrollInlineDays'),
@@ -1022,10 +1082,14 @@
   function calculatePayroll(autoPopulateLate = true) {
     const employeeSelect = document.getElementById('payrollInlineEmployeeSelect');
     const weekSelect = document.getElementById('payrollInlineWeekSelect');
+    const monthSelect = document.getElementById('payrollInlineMonthSelect');
     const employeeId = employeeSelect?.value;
-    const weekStart = weekSelect?.value;
 
-    if (!employeeId || !weekStart) {
+    // Get period start based on pay period type
+    const isMonthly = currentPayPeriodType === 'monthly';
+    const periodStart = isMonthly ? monthSelect?.value : weekSelect?.value;
+
+    if (!employeeId || !periodStart) {
       resetPayrollCalculation();
       return;
     }
@@ -1033,56 +1097,55 @@
     const emp = employees.find(e => e.id === employeeId);
     if (!emp) return;
 
-    const weekEnd = getPayrollWeekEnd(weekStart);
+    // Get period end based on pay period type
+    const periodEnd = isMonthly ? getMonthEnd(periodStart) : getPayrollWeekEnd(periodStart);
 
-    // Get attendance for this employee for this week
-    // Convert to string for comparison since employeeId from select is string
-    const weekAttendance = attendance.filter(a => {
+    // Max days for the period (6 for weekly, actual working days for monthly)
+    const maxDaysInPeriod = isMonthly ? getWorkingDaysInMonth(periodStart) : 6;
+
+    // Get attendance for this employee for this period
+    const periodAttendance = attendance.filter(a => {
       return String(a.employee_id) === String(employeeId) &&
-             a.date >= weekStart &&
-             a.date <= weekEnd;
+             a.date >= periodStart &&
+             a.date <= periodEnd;
     });
 
-    // Count approved leave days within this week
-    // Convert to string for comparison since employeeId from select is string
+    // Count approved leave days within this period
     const approvedLeaveDays = leaveRequests.filter(leave => {
       if (String(leave.employee_id) !== String(employeeId) || leave.status !== 'Approved') return false;
       const leaveStart = new Date(leave.start_date);
       const leaveEnd = new Date(leave.end_date);
-      const weekStartDate = new Date(weekStart);
-      const weekEndDate = new Date(weekEnd);
-      // Check if leave overlaps with this week
-      return leaveStart <= weekEndDate && leaveEnd >= weekStartDate;
+      const periodStartDate = new Date(periodStart);
+      const periodEndDate = new Date(periodEnd);
+      return leaveStart <= periodEndDate && leaveEnd >= periodStartDate;
     }).reduce((total, leave) => {
-      // Count days within this week
       const leaveStart = new Date(leave.start_date);
       const leaveEnd = new Date(leave.end_date);
-      const weekStartDate = new Date(weekStart);
-      const weekEndDate = new Date(weekEnd);
-      // Clamp leave dates to week boundaries
-      const effectiveStart = leaveStart < weekStartDate ? weekStartDate : leaveStart;
-      const effectiveEnd = leaveEnd > weekEndDate ? weekEndDate : leaveEnd;
-      // Calculate days (inclusive)
+      const periodStartDate = new Date(periodStart);
+      const periodEndDate = new Date(periodEnd);
+      const effectiveStart = leaveStart < periodStartDate ? periodStartDate : leaveStart;
+      const effectiveEnd = leaveEnd > periodEndDate ? periodEndDate : leaveEnd;
       const days = Math.floor((effectiveEnd - effectiveStart) / (1000 * 60 * 60 * 24)) + 1;
       return total + days;
     }, 0);
 
     // Calculate days worked and hours
-    const attendanceDays = weekAttendance.length;
-    const totalHours = weekAttendance.reduce((sum, a) => sum + (a.worked_hours || 0), 0);
-    const totalLateMinutes = weekAttendance.reduce((sum, a) => sum + (a.late_minutes || 0), 0);
+    const attendanceDays = periodAttendance.length;
+    const totalHours = periodAttendance.reduce((sum, a) => sum + (a.worked_hours || 0), 0);
+    const totalLateMinutes = periodAttendance.reduce((sum, a) => sum + (a.late_minutes || 0), 0);
 
-    // Total payable days = attendance days + approved leave days (max 6 per week)
-    const daysWorked = Math.min(attendanceDays + approvedLeaveDays, 6);
+    // Total payable days (capped at max days for period)
+    const daysWorked = Math.min(attendanceDays + approvedLeaveDays, maxDaysInPeriod);
 
     // Calculate gross pay (salary field now stores daily rate directly)
     const dailyRate = emp.salary || 510;
     const grossPay = daysWorked * dailyRate;
 
-    // Get statutory deductions
-    const sss = emp.sss_deduction || 300;
-    const philhealth = emp.philhealth_deduction || 250;
-    const pagibig = emp.pagibig_deduction || 200;
+    // Get statutory deductions (multiply by 4 for monthly)
+    const deductionMultiplier = isMonthly ? 4 : 1;
+    const sss = (emp.sss_deduction || 300) * deductionMultiplier;
+    const philhealth = (emp.philhealth_deduction || 250) * deductionMultiplier;
+    const pagibig = (emp.pagibig_deduction || 200) * deductionMultiplier;
     const statutoryDeductions = sss + philhealth + pagibig;
 
     // Get late input elements
@@ -1142,23 +1205,24 @@
     // Check for warnings
     let notice = '';
     let canRunPayroll = true;
-    const existingPayslip = payslips.find(p => String(p.employee_id) === String(employeeId) && p.week_start === weekStart);
+    const periodLabel = isMonthly ? 'month' : 'week';
+    const existingPayslip = payslips.find(p => String(p.employee_id) === String(employeeId) && p.week_start === periodStart);
     if (existingPayslip) {
       if (existingPayslip.status === 'Approved') {
-        notice = `⚠️ Payslip already APPROVED for this week. Cannot modify approved payslips.`;
+        notice = `⚠️ Payslip already APPROVED for this ${periodLabel}. Cannot modify approved payslips.`;
         canRunPayroll = false;
       } else {
-        notice = `Payslip already exists for this week (${existingPayslip.status}). Running payroll will update it.`;
+        notice = `Payslip already exists for this ${periodLabel} (${existingPayslip.status}). Running payroll will update it.`;
       }
     } else if (daysWorked === 0) {
-      notice = 'No attendance or approved leave found for this week. Gross pay will be ₱0.00.';
+      notice = `No attendance or approved leave found for this ${periodLabel}. Gross pay will be ₱0.00.`;
     }
     // Warning for negative net pay
     if (netPay < 0 && daysWorked > 0) {
       notice = `⚠️ Warning: Deductions (₱${(statutoryDeductions + lateDeduction).toLocaleString(undefined, {minimumFractionDigits: 2})}) exceed gross pay. Net pay will be ₱0.00.`;
     }
-    // Overtime notification (hours > 48 for the week, or any day > 8)
-    const maxRegularHours = 48; // 6 days * 8 hours
+    // Overtime notification
+    const maxRegularHours = isMonthly ? maxDaysInPeriod * 8 : 48;
     if (totalHours > maxRegularHours && !notice) {
       const overtimeHours = (totalHours - maxRegularHours).toFixed(1);
       notice = `ℹ️ Note: ${overtimeHours} overtime hours detected. Currently paid at regular rate.`;
@@ -1177,13 +1241,15 @@
     }
 
     // Store calculation data for confirmation
-    // Calculate payable hours (capped at 8 per day, 48 per week)
-    const payableHours = Math.min(totalHours, 48);
+    // Calculate payable hours (capped based on period type)
+    const maxPayableHours = isMonthly ? maxDaysInPeriod * 8 : 48;
+    const payableHours = Math.min(totalHours, maxPayableHours);
 
     window._payrollData = {
       employeeId,
-      weekStart,
-      weekEnd,
+      weekStart: periodStart,
+      weekEnd: periodEnd,
+      periodType: currentPayPeriodType,
       grossPay,
       sss: daysWorked > 0 ? sss : 0,
       philhealth: daysWorked > 0 ? philhealth : 0,
@@ -1201,11 +1267,13 @@
   async function handlePayrollConfirm() {
     const data = window._payrollData;
     if (!data || !data.employeeId) {
-      if (window.toastError) toastError('Error', 'Please select an employee and week first');
+      if (window.toastError) toastError('Error', 'Please select an employee and period first');
       return;
     }
 
-    // Check if there's an approved payslip for this week (safety check)
+    const periodLabel = data.periodType === 'monthly' ? 'month' : 'week';
+
+    // Check if there's an approved payslip for this period (safety check)
     const existingPayslip = payslips.find(p => String(p.employee_id) === String(data.employeeId) && p.week_start === data.weekStart);
     if (existingPayslip && existingPayslip.status === 'Approved') {
       if (window.toastError) toastError('Error', 'Cannot modify an approved payslip. Please reject it first if changes are needed.');
@@ -1214,7 +1282,7 @@
 
     // Warn if no days worked
     if (data.daysWorked === 0) {
-      if (!confirm('No attendance or approved leave found for this week. This will create a payslip with ₱0.00 gross pay. Continue?')) {
+      if (!confirm(`No attendance or approved leave found for this ${periodLabel}. This will create a payslip with ₱0.00 gross pay. Continue?`)) {
         return;
       }
     }
@@ -1478,6 +1546,8 @@
 
   function openEmployeeModal(employeeId = null) {
     editingEmployeeId = employeeId;
+    const newEmployeeFields = document.getElementById('newEmployeeFields');
+    const empIdField = document.getElementById('empId');
 
     if (employeeId) {
       const emp = employees.find(e => e.id === employeeId);
@@ -1490,10 +1560,21 @@
         document.getElementById('empSSS').value = emp.sss_deduction || 300;
         document.getElementById('empPhilhealth').value = emp.philhealth_deduction || 250;
         document.getElementById('empPagibig').value = emp.pagibig_deduction || 200;
+        // Hide new employee fields and show ID when editing
+        newEmployeeFields.style.display = 'none';
+        empIdField.parentElement.style.display = '';
       }
     } else {
       els.modalTitle.textContent = 'Add Employee';
       els.form.reset();
+      // Show new employee fields and hide ID when adding
+      newEmployeeFields.style.display = 'block';
+      empIdField.parentElement.style.display = 'none';
+      // Set default values
+      document.getElementById('empSalary').value = 510;
+      document.getElementById('empSSS').value = 300;
+      document.getElementById('empPhilhealth').value = 250;
+      document.getElementById('empPagibig').value = 200;
     }
 
     els.modal.style.display = 'flex';
@@ -1558,9 +1639,68 @@
 
         if (window.toastSuccess) toastSuccess('Success', 'Employee updated successfully');
       } else {
-        // This shouldn't happen - employees register themselves
-        if (window.toastError) toastError('Error', 'Use registration page to add employees');
-        return;
+        // Create new employee
+        const email = document.getElementById('empEmail').value.trim().toLowerCase();
+        const username = document.getElementById('empUsername').value.trim().toLowerCase();
+        const password = document.getElementById('empPassword').value;
+
+        // Validate required fields for new employee
+        if (!email || !username || !password) {
+          if (window.toastError) toastError('Error', 'Email, username, and password are required');
+          return;
+        }
+        if (password.length < 6) {
+          if (window.toastError) toastError('Error', 'Password must be at least 6 characters');
+          return;
+        }
+
+        // Check if email already exists
+        const { data: emailCheck } = await supabaseClient
+          .from('employees')
+          .select('id')
+          .eq('email', email)
+          .single();
+
+        if (emailCheck) {
+          if (window.toastError) toastError('Error', 'This email is already registered');
+          return;
+        }
+
+        // Check if username already exists
+        const { data: usernameCheck } = await supabaseClient
+          .from('employees')
+          .select('id')
+          .eq('username', username)
+          .single();
+
+        if (usernameCheck) {
+          if (window.toastError) toastError('Error', 'This username is already taken');
+          return;
+        }
+
+        // Generate unique employee ID
+        const employeeId = await db.generateEmployeeId();
+
+        // Create employee in Supabase
+        const { error } = await supabaseClient
+          .from('employees')
+          .insert([{
+            id: employeeId,
+            name,
+            email,
+            username,
+            password_hash: password,
+            role,
+            salary,
+            sss_deduction: sss,
+            philhealth_deduction: philhealth,
+            pagibig_deduction: pagibig,
+            status: 'active'
+          }]);
+
+        if (error) throw error;
+
+        if (window.toastSuccess) toastSuccess('Success', `Employee created with ID: ${employeeId}`);
       }
 
       closeModal();
@@ -2010,21 +2150,25 @@
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 18;
 
-    // Format week dates nicely (Dec 15 - 21)
+    // Format period dates nicely
     const startDate = new Date(payslip.week_start);
     const endDate = new Date(payslip.week_end);
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const weekLabel = `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
+    const isMonthly = payslip.period_type === 'monthly';
+    const periodLabel = isMonthly
+      ? `${monthNames[startDate.getMonth()]} ${startDate.getFullYear()}`
+      : `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
+    const periodTypeLabel = isMonthly ? 'MONTHLY' : 'WEEKLY';
 
     // Header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('PAYROLL - PAYSLIP', pageWidth / 2, y, { align: 'center' });
+    doc.text(`PAYROLL - PAYSLIP (${periodTypeLabel})`, pageWidth / 2, y, { align: 'center' });
 
     y += 6;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Week: ${weekLabel}`, pageWidth / 2, y, { align: 'center' });
+    doc.text(`Period: ${periodLabel}`, pageWidth / 2, y, { align: 'center' });
 
     // Company logo (top right) - square logo 225x225px
     if (logoImg) {
@@ -2060,6 +2204,7 @@
     const rowHeight = 9;
 
     // Draw table rows
+    const periodSuffix = isMonthly ? 'month' : 'week';
     const rows = [
       ['Worked Hours (actual)', `${payslip.worked_hours || 0} h`],
       ['Payable Hours (capped)', `${payslip.payable_hours || 0} h`],
@@ -2067,8 +2212,8 @@
       ['SSS', `P${Number(payslip.sss || 300)}`],
       ['PhilHealth', `P${Number(payslip.philhealth || 250)}`],
       ['Pag-IBIG', `P${Number(payslip.pagibig || 200)}`],
-      ['Gross (week)', `P${Number(payslip.gross_pay || 0)}`],
-      ['Net (week)', `P${Number(payslip.net_pay || 0)}`]
+      [`Gross (${periodSuffix})`, `P${Number(payslip.gross_pay || 0)}`],
+      [`Net (${periodSuffix})`, `P${Number(payslip.net_pay || 0)}`]
     ];
 
     doc.setFont('helvetica', 'normal');
