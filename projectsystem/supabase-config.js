@@ -9,8 +9,13 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdieXd1bWNmY3l5eG15dWJoZXhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTg2NjY1NCwiZXhwIjoyMDgxNDQyNjU0fQ.fnM9yx6xQa_55PP8cLzH1sLgMAXx8iRd4wMOBr88Jok';
 
 // Initialize Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+if (!window.supabase) {
+  console.error('Supabase SDK not loaded. Check your internet connection or if the CDN is blocked.');
+  alert('Failed to load Supabase SDK. Please check your internet connection and refresh the page.');
+} else {
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Export for use in other files
-window.supabaseClient = supabase;
-window.SUPABASE_URL = SUPABASE_URL;
+  // Export for use in other files
+  window.supabaseClient = supabase;
+  window.SUPABASE_URL = SUPABASE_URL;
+}
