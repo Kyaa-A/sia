@@ -291,9 +291,7 @@
 
   <div class="container">
     <div class="scanner-container" id="scannerContainer" style="border:3px solid #10b981;border-radius:12px;position:relative;overflow:hidden">
-      <!-- html5-qrcode renders here -->
-      <div id="reader" style="width:100%;height:100%"></div>
-      <video id="videoElement" style="display:none"></video>
+      <video id="videoElement" style="width:100%;height:100%;object-fit:cover"></video>
       <div id="loadingOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;background:rgba(0,0,0,0.8);z-index:10">
         <div style="font-size:48px;margin-bottom:16px">📷</div>
         <div style="font-size:16px;margin-bottom:8px">Initializing Camera...</div>
@@ -373,8 +371,8 @@
   <script src="supabase-config.js"></script>
   <script src="supabase-db.js"></script>
 
-  <!-- html5-qrcode - robust web QR scanner with multiple detection engines -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- qr-scanner - this one actually detected before -->
+  <script src="qr-scanner.umd.min.js"></script>
 
   <script>
   (function() {
@@ -443,39 +441,31 @@
       }
     }
 
-    // html5-qrcode scanner - robust, handles phone screens well
-    let html5QrCode = null;
+    // qr-scanner - native continuous mode (this detected before)
+    let qrScanner = null;
 
     async function initScanner() {
       try {
-        html5QrCode = new Html5Qrcode("reader");
-
-        const config = {
-          fps: 30,  // High frame rate
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-          disableFlip: false,
-          // Use native BarcodeDetector if available (fastest)
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
-          }
-        };
-
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          (decodedText) => {
-            // QR detected!
+        qrScanner = new QrScanner(
+          videoElement,
+          result => {
+            if (isProcessing) return;
             console.log('=== QR DETECTED ===');
-            console.log('Data:', decodedText);
-            html5QrCode.pause(true);
-            onScanSuccess(decodedText, false);
+            console.log('Data:', result.data);
+            qrScanner.pause();
+            onScanSuccess(result.data, false);
           },
-          () => {} // Ignore scan failures
+          {
+            preferredCamera: 'environment',
+            highlightScanRegion: true,
+            highlightCodeOutline: true,
+            returnDetailedScanResult: true
+          }
         );
 
+        await qrScanner.start();
         loadingOverlay.style.display = 'none';
-        console.log('html5-qrcode scanner started');
+        console.log('qr-scanner started');
         setStatus('Ready to scan - Show your QR code', 'ready');
 
       } catch (err) {
@@ -491,14 +481,14 @@
     }
 
     function stopScanning() {
-      if (html5QrCode) {
-        try { html5QrCode.pause(true); } catch(e) {}
+      if (qrScanner) {
+        try { qrScanner.pause(); } catch(e) {}
       }
     }
 
     function resumeScanning() {
-      if (html5QrCode) {
-        try { html5QrCode.resume(); } catch(e) {}
+      if (qrScanner) {
+        try { qrScanner.start(); } catch(e) {}
       }
     }
 
@@ -733,7 +723,7 @@
     confirmBtn.addEventListener('click', confirmAction);
     cancelBtn.addEventListener('click', cancelAction);
 
-    // Scan QR from uploaded file using html5-qrcode
+    // Scan QR from uploaded file
     window.scanQRFromFile = async function() {
       const fileInput = document.getElementById('qrFileInput');
       if (!fileInput.files || !fileInput.files[0]) return;
@@ -742,9 +732,9 @@
       setStatus('Scanning image...', 'processing');
 
       try {
-        const result = await Html5Qrcode.scanFile(file, true);
-        console.log('File scan result:', result);
-        onScanSuccess(result, true);
+        const result = await QrScanner.scanImage(file, { returnDetailedScanResult: true });
+        console.log('File scan result:', result.data);
+        onScanSuccess(result.data, true);
       } catch (err) {
         console.error('File scan error:', err);
         setStatus('Could not read QR from image', 'error');
@@ -773,9 +763,16 @@
       if (input) input.value = '';
     };
 
-    // Manual scan trigger - not needed with html5-qrcode
-    window.captureAndScan = function() {
-      showToast('Scanner is running automatically', 'info');
+    // Manual scan trigger
+    window.captureAndScan = async function() {
+      try {
+        const result = await QrScanner.scanImage(videoElement, { returnDetailedScanResult: true });
+        console.log('Manual scan:', result.data);
+        stopScanning();
+        onScanSuccess(result.data, false);
+      } catch (err) {
+        showToast('No QR found - keep trying', 'error');
+      }
     };
 
     // Initialize
