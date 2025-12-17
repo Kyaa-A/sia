@@ -961,7 +961,12 @@
         if (!hasTimeIn) {
           actionBtn = `<button onclick="clockIn('${emp.id}')" style="background:#10b981;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Time In</button>`;
         } else if (!hasTimeOut) {
-          actionBtn = `<button onclick="clockOut('${emp.id}')" style="background:#ef4444;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Time Out</button>`;
+          // Show both Time Out and Cancel buttons when working
+          actionBtn = `
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onclick="clockOut('${emp.id}')" style="background:#ef4444;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Time Out</button>
+              <button onclick="cancelTimeIn('${emp.id}')" style="background:#6b7280;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:12px" title="Cancel mistaken time in">Cancel</button>
+            </div>`;
         } else {
           actionBtn = `<span style="color:#4b5563">Done for today</span>`;
         }
@@ -1019,6 +1024,30 @@
     } catch (err) {
       console.error('Clock out error:', err);
       if (window.toastError) toastError('Error', err.message || 'Failed to clock out');
+    }
+  };
+
+  // Cancel Time In function (for mistaken clock-ins)
+  window.cancelTimeIn = async function(employeeId) {
+    try {
+      const emp = employees.find(e => e.id === employeeId);
+      if (!emp) throw new Error('Employee not found');
+
+      // Confirm before cancelling
+      if (!confirm(`Cancel time in for ${emp.name}? This will remove today's attendance record.`)) {
+        return;
+      }
+
+      await db.cancelTimeIn(employeeId);
+      if (window.toastSuccess) toastSuccess('Success', `Time in cancelled for ${emp.name}`);
+
+      await loadAllData();
+      renderTimeClock();
+      renderAttendance();
+      updateHomeStats();
+    } catch (err) {
+      console.error('Cancel time in error:', err);
+      if (window.toastError) toastError('Error', err.message || 'Failed to cancel time in');
     }
   };
 

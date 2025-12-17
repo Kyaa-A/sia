@@ -351,6 +351,33 @@ const db = {
     return data;
   },
 
+  /**
+   * Cancel Time In (delete today's attendance record)
+   */
+  async cancelTimeIn(employeeId) {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Get today's attendance
+    const existing = await this.getTodayAttendance(employeeId);
+    if (!existing) {
+      throw new Error('No time in record to cancel');
+    }
+
+    // Only allow cancel if not yet timed out
+    if (existing.time_out) {
+      throw new Error('Cannot cancel - employee has already timed out');
+    }
+
+    // Delete the attendance record
+    const { error } = await supabaseClient
+      .from('attendance')
+      .delete()
+      .eq('id', existing.id);
+
+    if (error) throw error;
+    return { success: true, message: 'Time in cancelled successfully' };
+  },
+
   // =============================================
   // LEAVE REQUEST OPERATIONS
   // =============================================
