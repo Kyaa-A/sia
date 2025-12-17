@@ -992,6 +992,107 @@ input[type=text]:focus, input[type=number]:focus, input[type=email]:focus, input
   }
 }
 
+/* ============================================
+   Mobile Table Optimizations
+   ============================================ */
+
+/* Compact table rows on mobile */
+@media (max-width: 768px) {
+  /* Reduce row height */
+  table tbody tr {
+    line-height: 1.3;
+  }
+
+  table tbody td {
+    padding: 8px 6px !important;
+    vertical-align: middle;
+  }
+
+  /* Text truncation for long content */
+  table td {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Keep name column readable */
+  table td:nth-child(2) {
+    max-width: 100px;
+  }
+
+  /* Compact action buttons */
+  table td button {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    margin: 1px !important;
+  }
+
+  /* Stack action buttons vertically */
+  table td:last-child {
+    white-space: normal !important;
+    max-width: none;
+  }
+}
+
+/* Extra compact on small phones */
+@media (max-width: 480px) {
+  table tbody td {
+    padding: 6px 4px !important;
+    font-size: 11px !important;
+  }
+
+  table th {
+    padding: 8px 4px !important;
+    font-size: 11px !important;
+  }
+
+  /* Narrower columns */
+  table td {
+    max-width: 80px;
+  }
+
+  table td:nth-child(2) {
+    max-width: 70px;
+  }
+
+  /* Icon-style compact buttons */
+  table td button {
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+  }
+
+  /* Hide less important columns on very small screens */
+  #employeesTable th:nth-child(4),
+  #employeesTable td:nth-child(4),
+  #archiveTable th:nth-child(4),
+  #archiveTable td:nth-child(4) {
+    display: none;
+  }
+}
+
+/* Very small devices - hide more columns */
+@media (max-width: 360px) {
+  table tbody td {
+    padding: 5px 3px !important;
+    font-size: 10px !important;
+  }
+
+  table th {
+    font-size: 10px !important;
+  }
+
+  table td {
+    max-width: 60px;
+  }
+
+  /* Hide Role column on employees table */
+  #employeesTable th:nth-child(3),
+  #employeesTable td:nth-child(3) {
+    display: none;
+  }
+}
+
 /* Print styles */
 @media print {
   .sidebar, .mobile-menu-toggle, .sidebar-overlay {
