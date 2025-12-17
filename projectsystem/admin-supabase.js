@@ -1293,30 +1293,33 @@
     let notice = '';
     let canRunPayroll = true;
     const periodLabel = isMonthly ? 'month' : 'week';
+
+    // Salary warning is important - always show if using default rate
+    if (usingDefaultRate) {
+      notice = `⚠️ No salary set - using default ₱510/day. `;
+    }
+
     const existingPayslip = payslips.find(p => String(p.employee_id) === String(employeeId) && p.week_start === periodStart);
     if (existingPayslip) {
       if (existingPayslip.status === 'Approved') {
-        notice = `⚠️ Payslip already APPROVED for this ${periodLabel}. Cannot modify approved payslips.`;
+        notice += `Payslip already APPROVED for this ${periodLabel}. Cannot modify.`;
         canRunPayroll = false;
       } else {
-        notice = `Payslip already exists for this ${periodLabel} (${existingPayslip.status}). Running payroll will update it.`;
+        notice += `Payslip exists (${existingPayslip.status}). Will update.`;
       }
     } else if (daysWorked === 0) {
-      notice = `No attendance or approved leave found for this ${periodLabel}. Gross pay will be ₱0.00.`;
+      notice += `No attendance or leave found. Gross pay will be ₱0.00.`;
     }
     // Warning for negative net pay
     if (netPay < 0 && daysWorked > 0) {
-      notice = `⚠️ Warning: Deductions (₱${(statutoryDeductions + lateDeduction).toLocaleString(undefined, {minimumFractionDigits: 2})}) exceed gross pay. Net pay will be ₱0.00.`;
+      notice = `⚠️ Deductions exceed gross pay. Net pay will be ₱0.00.`;
+      if (usingDefaultRate) notice = `⚠️ No salary set (using ₱510/day). ` + notice;
     }
     // Overtime notification
     const maxRegularHours = isMonthly ? maxDaysInPeriod * 8 : 48;
-    if (totalHours > maxRegularHours && !notice) {
+    if (totalHours > maxRegularHours && !existingPayslip && daysWorked > 0) {
       const overtimeHours = (totalHours - maxRegularHours).toFixed(1);
-      notice = `ℹ️ Note: ${overtimeHours} overtime hours detected. Currently paid at regular rate.`;
-    }
-    // Warning for missing salary (using default rate)
-    if (usingDefaultRate && !notice) {
-      notice = `⚠️ Warning: Employee has no salary set. Using default rate of ₱510/day.`;
+      notice += ` ${overtimeHours}h overtime (regular rate).`;
     }
     if (els.notice) {
       els.notice.textContent = notice;
