@@ -441,19 +441,21 @@
       }
     }
 
-    // ULTRA-FAST scanning with jsQR (synchronous, no web worker delay)
+    // ULTRA-FAST scanning with jsQR
     let scanning = false;
     let scanCanvas = null;
     let scanCtx = null;
+    let frameCount = 0;
+    let lastFpsTime = 0;
 
     async function initScanner() {
       try {
-        // LOW RESOLUTION = FAST
+        // Higher resolution for better QR detection
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: 640, max: 640 },
-            height: { ideal: 480, max: 480 }
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
         });
 
@@ -467,14 +469,16 @@
           check();
         });
 
-        // Pre-create canvas
+        // Canvas for CENTER REGION only (faster + focused on QR area)
+        const size = Math.min(videoElement.videoWidth, videoElement.videoHeight) * 0.7;
         scanCanvas = document.createElement('canvas');
-        scanCanvas.width = videoElement.videoWidth;
-        scanCanvas.height = videoElement.videoHeight;
+        scanCanvas.width = size;
+        scanCanvas.height = size;
         scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
 
         loadingOverlay.style.display = 'none';
         console.log('Camera:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+        console.log('Scan region:', size, 'x', size);
         setStatus('Ready to scan - Show your QR code', 'ready');
 
         startScanning();
@@ -494,7 +498,9 @@
     function startScanning() {
       if (scanning) return;
       scanning = true;
-      console.log('jsQR scanning started (synchronous - no delays)');
+      frameCount = 0;
+      lastFpsTime = performance.now();
+      console.log('jsQR scanning started...');
 
       function scan() {
         if (!scanning || isProcessing) {
@@ -502,16 +508,34 @@
           return;
         }
 
-        // Draw frame
-        scanCtx.drawImage(videoElement, 0, 0);
+        // Calculate center crop region
+        const vw = videoElement.videoWidth;
+        const vh = videoElement.videoHeight;
+        const size = scanCanvas.width;
+        const sx = (vw - size) / 2;
+        const sy = (vh - size) / 2;
+
+        // Draw CENTER region only
+        scanCtx.drawImage(videoElement, sx, sy, size, size, 0, 0, size, size);
 
         // Get image data
-        const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+        const imageData = scanCtx.getImageData(0, 0, size, size);
 
-        // jsQR is SYNCHRONOUS - returns immediately
+        // jsQR - try both normal and inverted
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert' // faster
+          inversionAttempts: 'attemptBoth'
         });
+
+        frameCount++;
+
+        // Log FPS every 2 seconds
+        const now = performance.now();
+        if (now - lastFpsTime > 2000) {
+          const fps = Math.round(frameCount / ((now - lastFpsTime) / 1000));
+          console.log('Scanning at', fps, 'FPS');
+          frameCount = 0;
+          lastFpsTime = now;
+        }
 
         if (code) {
           scanning = false;
@@ -521,7 +545,6 @@
           return;
         }
 
-        // Next frame immediately
         requestAnimationFrame(scan);
       }
 
