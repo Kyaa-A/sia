@@ -613,10 +613,9 @@
     const nextBtn = document.getElementById('salarySlipsNext');
     if (!container) return;
 
-    // Sort by date (newest first) then filter by search term
+    // Sort by ID descending (newest created first)
     let filtered = [...payslips].sort((a, b) => {
-      // Sort by week_start descending (newest first)
-      return new Date(b.week_start) - new Date(a.week_start);
+      return (b.id || 0) - (a.id || 0);
     });
     if (salarySlipsSearchTerm) {
       const term = salarySlipsSearchTerm.toLowerCase();
@@ -913,44 +912,20 @@
       }
 
       summary.innerHTML = `
-        <div style="margin-bottom:12px;font-size:13px;font-weight:600;text-transform:uppercase;opacity:0.7">Payslip Summary</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px">
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="opacity:0.8">Worked Hours</span>
-            <span style="font-weight:600">${workedHours.toFixed(1)}h</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="opacity:0.8">Late</span>
-            <span style="font-weight:600;color:${lateMinutes > 0 ? '#fca5a5' : '#10b981'}">${lateDisplay}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="opacity:0.8">Gross Pay</span>
-            <span style="font-weight:600">₱${gross.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="opacity:0.8">SSS</span>
-            <span style="font-weight:600;color:#fca5a5">-₱${sss.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="opacity:0.8">PhilHealth</span>
-            <span style="font-weight:600;color:#fca5a5">-₱${philhealth.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="opacity:0.8">Pag-IBIG</span>
-            <span style="font-weight:600;color:#fca5a5">-₱${pagibig.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="opacity:0.8">Late Deduction</span>
-            <span style="font-weight:600;color:#fca5a5">-₱${lateDeduction.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-            <span style="opacity:0.8">Total Deductions</span>
-            <span style="font-weight:600;color:#fca5a5">-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
-          </div>
+        <div style="margin-bottom:8px;font-size:12px;font-weight:600;text-transform:uppercase;opacity:0.7">Payslip Summary</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px">
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Hours</span><span style="font-weight:600">${workedHours.toFixed(1)}h</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Late</span><span style="font-weight:600;color:${lateMinutes > 0 ? '#fca5a5' : '#6ee7b7'}">${lateDisplay}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Gross</span><span style="font-weight:600">₱${gross.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">SSS</span><span style="color:#fca5a5">-₱${sss.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">PhilHealth</span><span style="color:#fca5a5">-₱${philhealth.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Pag-IBIG</span><span style="color:#fca5a5">-₱${pagibig.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Late Ded.</span><span style="color:#fca5a5">-₱${lateDeduction.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Total Ded.</span><span style="color:#fca5a5">-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
         </div>
-        <div style="margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,255,255,0.3);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:18px;font-weight:600">NET PAY</span>
-          <span style="font-size:28px;font-weight:700;color:#10b981">₱${net.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+        <div style="margin-top:12px;padding-top:12px;border-top:2px solid rgba(255,255,255,0.3);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:16px;font-weight:600">NET PAY</span>
+          <span style="font-size:24px;font-weight:700;color:#10b981">₱${net.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
         </div>
       `;
 
