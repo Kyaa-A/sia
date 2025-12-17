@@ -468,6 +468,25 @@
     renderAttendance();
   });
 
+  // Salary Slips search and pagination
+  document.getElementById('salarySlipsSearch')?.addEventListener('input', (e) => {
+    salarySlipsSearchTerm = e.target.value.trim();
+    salarySlipsPage = 1;
+    renderSalarySlips();
+  });
+
+  document.getElementById('salarySlipsPrev')?.addEventListener('click', () => {
+    if (salarySlipsPage > 1) {
+      salarySlipsPage--;
+      renderSalarySlips();
+    }
+  });
+
+  document.getElementById('salarySlipsNext')?.addEventListener('click', () => {
+    salarySlipsPage++;
+    renderSalarySlips();
+  });
+
   function updateAttendancePagination(current, total, recordCount, rangeStart, rangeEnd) {
     const indicator = document.getElementById('attendancePageIndicator');
     const prevBtn = document.getElementById('attendancePrev');
@@ -581,14 +600,54 @@
     }
   }
 
+  // Salary slips pagination and search state
+  let salarySlipsPage = 1;
+  const salarySlipsPerPage = 10;
+  let salarySlipsSearchTerm = '';
+
   function renderSalarySlips() {
     const container = document.getElementById('salarySlipsContainer');
+    const pageEl = document.getElementById('salarySlipsPage');
+    const infoEl = document.getElementById('salarySlipsInfo');
+    const prevBtn = document.getElementById('salarySlipsPrev');
+    const nextBtn = document.getElementById('salarySlipsNext');
     if (!container) return;
 
-    if (payslips.length === 0) {
-      container.innerHTML = '<div class="empty-state"><p class="muted">No payslips yet. Run payroll first to generate salary slips.</p></div>';
+    // Filter by search term
+    let filtered = payslips;
+    if (salarySlipsSearchTerm) {
+      const term = salarySlipsSearchTerm.toLowerCase();
+      filtered = payslips.filter(slip => {
+        const emp = slip.employees || {};
+        const name = (emp.name || '').toLowerCase();
+        const id = (slip.employee_id || '').toLowerCase();
+        return name.includes(term) || id.includes(term);
+      });
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p class="muted">No payslips found.</p></div>';
+      if (pageEl) pageEl.textContent = 'Page 0';
+      if (infoEl) infoEl.textContent = '0 results';
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
       return;
     }
+
+    // Pagination
+    const totalPages = Math.ceil(filtered.length / salarySlipsPerPage);
+    if (salarySlipsPage > totalPages) salarySlipsPage = totalPages;
+    if (salarySlipsPage < 1) salarySlipsPage = 1;
+
+    const startIdx = (salarySlipsPage - 1) * salarySlipsPerPage;
+    const endIdx = Math.min(startIdx + salarySlipsPerPage, filtered.length);
+    const pageData = filtered.slice(startIdx, endIdx);
+
+    // Update pagination UI
+    if (pageEl) pageEl.textContent = `Page ${salarySlipsPage} of ${totalPages}`;
+    if (infoEl) infoEl.textContent = `${filtered.length} total`;
+    if (prevBtn) prevBtn.disabled = salarySlipsPage <= 1;
+    if (nextBtn) nextBtn.disabled = salarySlipsPage >= totalPages;
 
     let html = `
       <table style="width:100%;border-collapse:collapse">
@@ -607,7 +666,7 @@
         <tbody>
     `;
 
-    payslips.forEach(slip => {
+    pageData.forEach(slip => {
       const emp = slip.employees || {};
       const statusClass = slip.status === 'Approved' ? 'background:#d1fae5;color:#065f46' :
                          slip.status === 'Rejected' ? 'background:#fee2e2;color:#991b1b' :

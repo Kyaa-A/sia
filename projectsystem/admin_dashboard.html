@@ -298,6 +298,15 @@
         <div id="salary" class="section-content">
       <div class="card section">
         <h2>Salary Slips</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <input id="salarySlipsSearch" type="text" placeholder="Search by name or ID..." style="padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;width:280px" />
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="salarySlipsInfo" style="color:#6b7280;font-size:13px"></span>
+            <button id="salarySlipsPrev" class="secondary" style="padding:6px 12px">◀ Prev</button>
+            <span id="salarySlipsPage" style="font-weight:600;min-width:80px;text-align:center">Page 1</span>
+            <button id="salarySlipsNext" class="secondary" style="padding:6px 12px">Next ▶</button>
+          </div>
+        </div>
         <div style="max-height:720px;overflow:auto">
           <div id="salarySlipsContainer">
             <p class="muted">Run payroll first to generate salary slips.</p>
