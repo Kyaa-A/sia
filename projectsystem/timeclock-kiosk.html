@@ -462,9 +462,12 @@
             highlightScanRegion: true,
             highlightCodeOutline: true,
             returnDetailedScanResult: true,
-            maxScansPerSecond: 25 // Scan more frequently
+            maxScansPerSecond: 30
           }
         );
+
+        // Try all inversion modes for better detection
+        qrScanner.setInversionMode('both');
 
         // Start scanner
         await qrScanner.start();
