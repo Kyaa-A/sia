@@ -424,15 +424,22 @@
 
     async function initScanner() {
       try {
-        // First get camera with optimal PC webcam settings
+        // Get camera - BACK camera on phone, any camera on PC
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
+            facingMode: { ideal: 'environment' },  // Back camera on phone
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            frameRate: { ideal: 60, min: 30 },  // Request high frame rate
-            focusMode: { ideal: 'continuous' },  // Keep focus adjusting
-            exposureMode: { ideal: 'continuous' }
+            frameRate: { ideal: 60, min: 30 }
           }
+        }).catch(() => {
+          // Fallback if back camera not available
+          return navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          });
         });
         videoElement.srcObject = stream;
         videoElement.setAttribute('playsinline', 'true');
