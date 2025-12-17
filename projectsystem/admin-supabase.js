@@ -1601,6 +1601,16 @@
     const philhealth = parseFloat(document.getElementById('empPhilhealth').value) || 250;
     const pagibig = parseFloat(document.getElementById('empPagibig').value) || 200;
 
+    // Validate required fields
+    if (!name) {
+      if (window.toastError) toastError('Error', 'Full name is required');
+      return;
+    }
+    if (!role) {
+      if (window.toastError) toastError('Error', 'Please select a role');
+      return;
+    }
+
     // Validate deduction bounds
     if (sss < 0 || sss > 5000) {
       if (window.toastError) toastError('Error', 'SSS deduction must be between ₱0 and ₱5,000');

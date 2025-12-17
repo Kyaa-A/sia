@@ -480,9 +480,9 @@
   <div id="modal" class="modal-backdrop" role="dialog" aria-hidden="true">
     <div class="modal" role="document">
       <h3 id="modalTitle">Add Employee</h3>
-      <form id="employeeForm">
+      <form id="employeeForm" novalidate>
         <label for="empName">Full name</label>
-        <input id="empName" type="text" required />
+        <input id="empName" type="text" />
         <div id="newEmployeeFields" style="display:none">
           <label for="empEmail">Email</label>
           <input id="empEmail" type="email" placeholder="employee@example.com" />
@@ -492,7 +492,7 @@
           <input id="empPassword" type="password" placeholder="min 6 characters" />
         </div>
         <label for="empRole">Role</label>
-        <select id="empRole" required style="padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;font-family:Arial;width:100%;background:#fff;color:#111">
+        <select id="empRole" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;font-family:Arial;width:100%;background:#fff;color:#111">
           <option value="" disabled selected>Select Role</option>
           <option value="Cashier">Cashier</option>
           <option value="Sales Representative">Sales Representative</option>
@@ -507,7 +507,7 @@
         <div class="row">
           <div class="col">
             <label for="empSalary">Daily Rate (₱)</label>
-            <input id="empSalary" type="number" min="0" step="0.01" placeholder="e.g. 510" value="510" required />
+            <input id="empSalary" type="number" min="0" step="0.01" placeholder="e.g. 510" value="510" />
           </div>
           <div class="col">
             <label for="empId">Employee ID</label>
