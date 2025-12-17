@@ -503,9 +503,20 @@
       }
     }
 
-    // Scan frame using jsQR
+    // Check if native BarcodeDetector is available
+    let barcodeDetector = null;
+    if ('BarcodeDetector' in window) {
+      try {
+        barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+        console.log('Using native BarcodeDetector API');
+      } catch (e) {
+        console.log('BarcodeDetector not supported, using jsQR');
+      }
+    }
+
+    // Scan frame using BarcodeDetector (native) or jsQR (fallback)
     let frameCount = 0;
-    function scanFrame() {
+    async function scanFrame() {
       if (!scanningActive || isProcessing) {
         if (scanningActive) requestAnimationFrame(scanFrame);
         return;
@@ -514,40 +525,57 @@
       if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
         frameCount++;
 
-        // Draw video frame to canvas (normal orientation)
-        scanCtx.drawImage(videoElement, 0, 0, scanCanvas.width, scanCanvas.height);
+        let detected = false;
 
-        // Get image data for jsQR
-        let imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+        // Try native BarcodeDetector first (much more reliable)
+        if (barcodeDetector) {
+          try {
+            const barcodes = await barcodeDetector.detect(videoElement);
+            if (barcodes.length > 0) {
+              console.log('=== QR DETECTED (native) ===');
+              console.log('Data:', barcodes[0].rawValue);
+              onScanSuccess(barcodes[0].rawValue, false);
+              return;
+            }
+          } catch (e) {
+            // Fallback to jsQR on error
+          }
+        }
 
-        // Try to decode QR code with attemptBoth for inverted colors
-        let code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'attemptBoth'
-        });
+        // Fallback to jsQR
+        if (!detected) {
+          // Draw video frame to canvas
+          scanCtx.drawImage(videoElement, 0, 0, scanCanvas.width, scanCanvas.height);
+          let imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
 
-        // If not found, try flipping horizontally (for mirrored webcams)
-        if (!code) {
-          scanCtx.save();
-          scanCtx.scale(-1, 1);
-          scanCtx.drawImage(videoElement, -scanCanvas.width, 0, scanCanvas.width, scanCanvas.height);
-          scanCtx.restore();
-
-          imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-          code = jsQR(imageData.data, imageData.width, imageData.height, {
+          // Try normal orientation
+          let code = jsQR(imageData.data, imageData.width, imageData.height, {
             inversionAttempts: 'attemptBoth'
           });
+
+          // Try flipped if not found
+          if (!code) {
+            scanCtx.save();
+            scanCtx.scale(-1, 1);
+            scanCtx.drawImage(videoElement, -scanCanvas.width, 0, scanCanvas.width, scanCanvas.height);
+            scanCtx.restore();
+            imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+            code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'attemptBoth'
+            });
+          }
+
+          if (code) {
+            console.log('=== QR DETECTED (jsQR) ===');
+            console.log('Data:', code.data);
+            onScanSuccess(code.data, false);
+            return;
+          }
         }
 
-        if (code) {
-          console.log('=== QR DETECTED ===');
-          console.log('Data:', code.data);
-          onScanSuccess(code.data, false);
-          return; // Stop scanning after successful detection
-        }
-
-        // Log every 60 frames (~2 sec) to show scanning is active
+        // Log every 60 frames (~2 sec)
         if (frameCount % 60 === 0) {
-          console.log('Scanning... frame', frameCount);
+          console.log('Scanning... frame', frameCount, barcodeDetector ? '(native+jsQR)' : '(jsQR only)');
         }
       }
 
