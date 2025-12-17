@@ -66,45 +66,19 @@
       width: 100%;
       height: 100%;
     }
-    .scanner-overlay {
+    /* Scan line animation - shows scanner is active */
+    .scan-line {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 250px;
-      height: 250px;
-      border: 3px solid #10b981;
-      border-radius: 12px;
+      left: 10%;
+      right: 10%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #10b981, transparent);
+      animation: scanMove 2s ease-in-out infinite;
       pointer-events: none;
-      box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
     }
-    .scanner-overlay {
-      animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { border-color: #10b981; }
-      50% { border-color: #34d399; box-shadow: 0 0 20px rgba(16, 185, 129, 0.5), 0 0 0 9999px rgba(0,0,0,0.5); }
-    }
-    .scanner-overlay::before,
-    .scanner-overlay::after {
-      content: '';
-      position: absolute;
-      width: 30px;
-      height: 30px;
-      border-color: #10b981;
-      border-style: solid;
-    }
-    .scanner-overlay::before {
-      top: -3px;
-      left: -3px;
-      border-width: 4px 0 0 4px;
-      border-radius: 8px 0 0 0;
-    }
-    .scanner-overlay::after {
-      bottom: -3px;
-      right: -3px;
-      border-width: 0 4px 4px 0;
-      border-radius: 0 0 8px 0;
+    @keyframes scanMove {
+      0%, 100% { top: 20%; opacity: 0.5; }
+      50% { top: 80%; opacity: 1; }
     }
     .status {
       text-align: center;
@@ -290,9 +264,11 @@
   <div class="clock" id="liveClock">--:--:--</div>
 
   <div class="container">
-    <div class="scanner-container" id="scannerContainer" style="border:3px solid #10b981;border-radius:12px;position:relative;overflow:hidden">
-      <video id="videoElement" style="width:100%;height:100%;object-fit:cover"></video>
-      <div id="loadingOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;background:rgba(0,0,0,0.8);z-index:10">
+    <div class="scanner-container" id="scannerContainer" style="border:3px solid #10b981;border-radius:12px;position:relative;overflow:hidden;background:#000">
+      <video id="videoElement" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block"></video>
+      <!-- Scan line shows scanner is working -->
+      <div class="scan-line" id="scanLine"></div>
+      <div id="loadingOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;background:rgba(0,0,0,0.9);z-index:10">
         <div style="font-size:48px;margin-bottom:16px">📷</div>
         <div style="font-size:16px;margin-bottom:8px">Initializing Camera...</div>
         <div style="font-size:12px;opacity:0.7">Please allow camera access when prompted</div>
@@ -467,7 +443,7 @@
         const settings = track.getSettings();
         console.log('Camera settings:', settings.width + 'x' + settings.height, '@', settings.frameRate + 'fps');
 
-        // Method 1: Native continuous mode
+        // Method 1: Native continuous mode - scan FULL frame (not just center)
         qrScanner = new QrScanner(
           videoElement,
           result => {
@@ -480,12 +456,20 @@
           },
           {
             returnDetailedScanResult: true,
-            maxScansPerSecond: 60,  // Maximum scan rate
-            highlightScanRegion: true,
-            highlightCodeOutline: true
+            maxScansPerSecond: 60,
+            highlightScanRegion: false,  // Don't show restrictive box
+            highlightCodeOutline: true,
+            // Scan the ENTIRE frame - don't restrict to center square
+            calculateScanRegion: (video) => ({
+              x: 0,
+              y: 0,
+              width: video.videoWidth,
+              height: video.videoHeight
+            })
           }
         );
 
+        // Start scanner but DON'T let it control the video (we already set it up)
         await qrScanner.start();
         loadingOverlay.style.display = 'none';
         console.log('qr-scanner started at max speed');
@@ -643,8 +627,9 @@
           return;
         }
 
-        // HIDE camera container to make buttons more visible
+        // HIDE camera container and scan line to make buttons more visible
         document.getElementById('scannerContainer').style.display = 'none';
+        document.getElementById('scanLine').style.display = 'none';
 
         // Show result card and buttons
         resultCard.classList.add('show');
@@ -769,8 +754,9 @@
       confirmBtn.disabled = false;
       cancelBtn.disabled = false;
 
-      // SHOW camera container again
+      // SHOW camera container and scan line again
       document.getElementById('scannerContainer').style.display = 'block';
+      document.getElementById('scanLine').style.display = 'block';
 
       setStatus('Ready to scan - Show your QR code', 'ready');
 
