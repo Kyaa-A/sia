@@ -504,6 +504,7 @@
     }
 
     // Scan frame using jsQR
+    let frameCount = 0;
     function scanFrame() {
       if (!scanningActive || isProcessing) {
         if (scanningActive) requestAnimationFrame(scanFrame);
@@ -511,22 +512,42 @@
       }
 
       if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
-        // Draw video frame to canvas
+        frameCount++;
+
+        // Draw video frame to canvas (normal orientation)
         scanCtx.drawImage(videoElement, 0, 0, scanCanvas.width, scanCanvas.height);
 
         // Get image data for jsQR
-        const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+        let imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
 
-        // Try to decode QR code
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert' // Try both normal and inverted
+        // Try to decode QR code with attemptBoth for inverted colors
+        let code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'attemptBoth'
         });
+
+        // If not found, try flipping horizontally (for mirrored webcams)
+        if (!code) {
+          scanCtx.save();
+          scanCtx.scale(-1, 1);
+          scanCtx.drawImage(videoElement, -scanCanvas.width, 0, scanCanvas.width, scanCanvas.height);
+          scanCtx.restore();
+
+          imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+          code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBoth'
+          });
+        }
 
         if (code) {
           console.log('=== QR DETECTED ===');
           console.log('Data:', code.data);
           onScanSuccess(code.data, false);
           return; // Stop scanning after successful detection
+        }
+
+        // Log every 60 frames (~2 sec) to show scanning is active
+        if (frameCount % 60 === 0) {
+          console.log('Scanning... frame', frameCount);
         }
       }
 
