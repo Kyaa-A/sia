@@ -371,11 +371,11 @@
   <script src="supabase-config.js"></script>
   <script src="supabase-db.js"></script>
 
-  <!-- QR Scanner Library - same as your working project -->
-  <script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+  <!-- QR Scanner Library - local files to avoid CORS -->
+  <script src="qr-scanner.umd.min.js"></script>
   <script>
-    // Set worker path for qr-scanner (local file to avoid CORS)
-    QrScanner.WORKER_PATH = './qr-scanner-worker.min.js';
+    // Set worker path for qr-scanner
+    QrScanner.WORKER_PATH = 'qr-scanner-worker.min.js';
   </script>
 
   <script>
