@@ -299,9 +299,9 @@
 
     // Count lates this week
     const weekStart = db.getWeekStart();
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    const weekEndStr = weekEnd.toISOString().split('T')[0];
+    const [y, m, d] = weekStart.split('-').map(Number);
+    const weekEnd = new Date(y, m - 1, d + 6);
+    const weekEndStr = formatDateLocal(weekEnd);
 
     const lates = attendance.filter(a => {
       return a.date >= weekStart && a.date <= weekEndStr && a.late_minutes > 0;
@@ -363,8 +363,8 @@
     const weekStart = getOffsetWeekStart(attendanceWeekOffset);
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
-    const weekStartStr = weekStart.toISOString().split('T')[0];
-    const weekEndStr = weekEnd.toISOString().split('T')[0];
+    const weekStartStr = formatDateLocal(weekStart);
+    const weekEndStr = formatDateLocal(weekEnd);
 
     // Update week label
     const weekRangeEl = document.getElementById('attendanceWeekRange');
@@ -1387,7 +1387,7 @@
     const container = document.getElementById('timeclockContainer');
     if (!container) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatDateLocal(new Date());
     const todayFormatted = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     let html = `
@@ -2702,8 +2702,8 @@
       labelEl.textContent = formatWeekLabel(weekStart);
     }
 
-    const weekStartStr = weekStart.toISOString().split('T')[0];
-    const weekEndStr = weekEnd.toISOString().split('T')[0];
+    const weekStartStr = formatDateLocal(weekStart);
+    const weekEndStr = formatDateLocal(weekEnd);
 
     // Filter employees by search query
     const filteredEmployees = perfSearchQuery

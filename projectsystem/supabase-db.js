@@ -5,6 +5,14 @@
  * This file provides all database CRUD operations using Supabase
  */
 
+// Helper to format date as YYYY-MM-DD in local timezone (avoids UTC conversion issues)
+function formatDateLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 const db = {
   // =============================================
   // EMPLOYEE OPERATIONS
@@ -260,7 +268,7 @@ const db = {
    * Get today's attendance for an employee
    */
   async getTodayAttendance(employeeId) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatDateLocal(new Date());
     const { data, error } = await supabaseClient
       .from('attendance')
       .select('*')
@@ -277,7 +285,7 @@ const db = {
    */
   async timeIn(employeeId, employeeName, employeeRole) {
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
+    const today = formatDateLocal(now);
 
     // Check if already timed in today
     const existing = await this.getTodayAttendance(employeeId);
@@ -314,7 +322,7 @@ const db = {
    */
   async timeOut(employeeId) {
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
+    const today = formatDateLocal(now);
 
     // Get today's attendance
     const existing = await this.getTodayAttendance(employeeId);
@@ -355,7 +363,7 @@ const db = {
    * Cancel Time In (delete today's attendance record)
    */
   async cancelTimeIn(employeeId) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatDateLocal(new Date());
 
     // Get today's attendance
     const existing = await this.getTodayAttendance(employeeId);
@@ -649,7 +657,7 @@ const db = {
     const day = d.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     d.setDate(d.getDate() + diff);
-    return d.toISOString().split('T')[0];
+    return formatDateLocal(d);
   },
 
   /**
