@@ -445,7 +445,7 @@
     // Initialize QR Scanner using qr-scanner library
     async function initScanner() {
       try {
-        // Create QR Scanner instance
+        // Create QR Scanner instance with aggressive settings
         qrScanner = new QrScanner(
           videoElement,
           result => {
@@ -457,7 +457,17 @@
             preferredCamera: 'environment',
             highlightScanRegion: true,
             highlightCodeOutline: true,
-            returnDetailedScanResult: true
+            returnDetailedScanResult: true,
+            maxScansPerSecond: 25, // Scan more frequently
+            // Scan the entire frame, not just center region
+            calculateScanRegion: (video) => {
+              return {
+                x: 0,
+                y: 0,
+                width: video.videoWidth,
+                height: video.videoHeight
+              };
+            }
           }
         );
 
@@ -468,6 +478,7 @@
         loadingOverlay.style.display = 'none';
 
         console.log('QR Scanner started successfully');
+        console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
         setStatus('Ready to scan - Show your QR code', 'ready');
 
       } catch (err) {
