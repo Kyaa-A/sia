@@ -1928,10 +1928,8 @@
       return;
     }
 
-    // Create new image from QR
-    const qrImg = new Image();
-    qrImg.onload = function() {
-      // Create canvas with QR + employee info
+    // Function to create the download image
+    function createDownloadImage(qrImage) {
       const downloadCanvas = document.createElement('canvas');
       const ctx = downloadCanvas.getContext('2d');
 
@@ -1951,10 +1949,10 @@
       ctx.fillStyle = '#1e3a5f';
       ctx.font = 'bold 20px Arial, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(currentQREmployeeName || 'Employee', downloadCanvas.width / 2, 30);
+      ctx.fillText(currentQREmployeeName || 'Employee', downloadCanvas.width / 2, 35);
 
       // Draw QR code
-      ctx.drawImage(qrImg, padding, headerHeight, qrSize, qrSize);
+      ctx.drawImage(qrImage, padding, headerHeight, qrSize, qrSize);
 
       // Draw employee ID below QR
       ctx.fillStyle = '#374151';
@@ -1975,9 +1973,28 @@
       document.body.removeChild(link);
 
       if (window.toastSuccess) toastSuccess('Success', 'QR code downloaded with employee info');
-    };
+    }
 
+    // Create new image from QR
+    const qrImg = new Image();
+    qrImg.crossOrigin = 'anonymous';
+    qrImg.onload = function() {
+      createDownloadImage(qrImg);
+    };
+    qrImg.onerror = function() {
+      // If image fails, try using canvas directly
+      if (qrCanvas) {
+        createDownloadImage(qrCanvas);
+      } else {
+        if (window.toastError) toastError('Error', 'Failed to load QR image');
+      }
+    };
     qrImg.src = qrSrc;
+
+    // If image already loaded (cached)
+    if (qrImg.complete && qrImg.naturalWidth > 0) {
+      createDownloadImage(qrImg);
+    }
   };
 
 
