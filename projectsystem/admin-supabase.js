@@ -1388,6 +1388,7 @@
 
   // View paystub detail
   let currentViewEmployee = null;
+  let currentViewPayslip = null;
 
   window.viewPaystubDetail = function(payslipId) {
     const payslip = currentEmpPayslips.find(p => p.id === payslipId);
@@ -1395,6 +1396,10 @@
 
     // Get employee info
     const emp = employees.find(e => e.id === payslip.employee_id) || {};
+
+    // Store for download/print
+    currentViewPayslip = payslip;
+    currentViewEmployee = emp;
 
     const content = document.getElementById('paystubContent');
     if (content) {
@@ -1447,6 +1452,350 @@
 
     const modal = document.getElementById('paystubModal');
     if (modal) modal.style.display = 'flex';
+  };
+
+  // Generate receipt HTML content
+  function generateReceiptHTML(payslip, emp) {
+    const gross = Number(payslip.gross_pay) || 0;
+    const net = Number(payslip.net_pay) || 0;
+    const sss = Number(payslip.sss) || 0;
+    const philhealth = Number(payslip.philhealth) || 0;
+    const pagibig = Number(payslip.pagibig) || 0;
+    const lateDeduction = Number(payslip.late_deduction) || 0;
+    const totalDeductions = sss + philhealth + pagibig + lateDeduction;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Payslip Receipt - ${emp.name || 'Employee'}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 400px;
+            margin: 0 auto;
+            background: #fff;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 2px solid #1e3a5f;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+          }
+          .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e3a5f;
+            margin-bottom: 5px;
+          }
+          .receipt-title {
+            font-size: 16px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+          }
+          .employee-info {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+          }
+          .employee-info div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+          }
+          .employee-info div:last-child { margin-bottom: 0; }
+          .label { color: #6b7280; font-size: 13px; }
+          .value { font-weight: 600; color: #1f2937; }
+          .section { margin-bottom: 20px; }
+          .section-title {
+            font-weight: 600;
+            color: #1e3a5f;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+          }
+          .line-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+          }
+          .line-item:last-child { border-bottom: none; }
+          .deduction { color: #ef4444; }
+          .total-section {
+            background: #1e3a5f;
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+          }
+          .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 10px;
+          }
+          .total-row:last-child { margin-bottom: 0; }
+          .net-pay {
+            font-size: 24px;
+            font-weight: bold;
+            color: #10b981;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px dashed #d1d5db;
+            color: #9ca3af;
+            font-size: 12px;
+          }
+          .footer p { margin-bottom: 5px; }
+          @media print {
+            body { padding: 10px; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="company-name">C4S Food Solution</div>
+          <div class="receipt-title">Payslip Receipt</div>
+        </div>
+
+        <div class="employee-info">
+          <div>
+            <span class="label">Employee Name</span>
+            <span class="value">${emp.name || 'Unknown'}</span>
+          </div>
+          <div>
+            <span class="label">Employee ID</span>
+            <span class="value">${payslip.employee_id}</span>
+          </div>
+          <div>
+            <span class="label">Pay Period</span>
+            <span class="value">${payslip.week_start || '—'} to ${payslip.week_end || '—'}</span>
+          </div>
+          <div>
+            <span class="label">Status</span>
+            <span class="value">${payslip.status || 'Pending'}</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Earnings</div>
+          <div class="line-item">
+            <span>Gross Pay</span>
+            <span>₱${gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Deductions</div>
+          <div class="line-item">
+            <span>SSS</span>
+            <span class="deduction">-₱${sss.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+          <div class="line-item">
+            <span>PhilHealth</span>
+            <span class="deduction">-₱${philhealth.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+          <div class="line-item">
+            <span>Pag-IBIG</span>
+            <span class="deduction">-₱${pagibig.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+          <div class="line-item">
+            <span>Late Deduction</span>
+            <span class="deduction">-₱${lateDeduction.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+          <div class="line-item" style="font-weight:600">
+            <span>Total Deductions</span>
+            <span class="deduction">-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+        </div>
+
+        <div class="total-section">
+          <div class="total-row">
+            <span>Gross Pay</span>
+            <span>₱${gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+          <div class="total-row">
+            <span>Total Deductions</span>
+            <span>-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+          <div class="total-row" style="border-top:1px solid rgba(255,255,255,0.3);padding-top:10px;margin-top:10px">
+            <span style="font-size:18px">NET PAY</span>
+            <span class="net-pay">₱${net.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Generated on ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <p>This is a computer-generated receipt.</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Download payslip receipt as PDF (same format as employee portal)
+  window.downloadPayslipReceipt = function() {
+    if (!currentViewPayslip) {
+      toastError('No payslip selected');
+      return;
+    }
+
+    const emp = currentViewEmployee || {};
+    const payslip = currentViewPayslip;
+
+    // Load logo image first
+    const logoImg = new Image();
+    logoImg.crossOrigin = 'anonymous';
+    logoImg.onload = function() {
+      generatePayslipPDF(payslip, emp, logoImg);
+    };
+    logoImg.onerror = function() {
+      // Generate PDF without logo if image fails to load
+      generatePayslipPDF(payslip, emp, null);
+    };
+    logoImg.src = 'src/logo.png';
+  };
+
+  function generatePayslipPDF(payslip, emp, logoImg) {
+    const { jsPDF } = window.jspdf;
+    // Receipt size: half of A4 height (portrait), width stays same
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [210, 148]  // width x height (half A4 length)
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 18;
+
+    // Format week dates nicely (Dec 15 - 21)
+    const startDate = new Date(payslip.week_start);
+    const endDate = new Date(payslip.week_end);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const weekLabel = `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
+
+    // Header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAYROLL - PAYSLIP', pageWidth / 2, y, { align: 'center' });
+
+    y += 6;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Week: ${weekLabel}`, pageWidth / 2, y, { align: 'center' });
+
+    // Company logo (top right) - square logo 225x225px
+    if (logoImg) {
+      try {
+        doc.addImage(logoImg, 'PNG', pageWidth - 30, 8, 20, 20);
+      } catch (e) {
+        console.log('Could not add logo to PDF');
+      }
+    }
+
+    // Employee info
+    y += 12;
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(emp.name || 'Unknown', pageWidth / 2, y, { align: 'center' });
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text(payslip.employee_id, pageWidth / 2, y, { align: 'center' });
+
+    // Rate per day (annual salary / 52 weeks / 6 days)
+    y += 10;
+    const dailyRate = emp.salary ? (emp.salary / 52 / 6) : 0;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });
+
+    // Table - wider to prevent text overlap
+    y += 10;
+    const tableX = 15;
+    const tableWidth = pageWidth - 30;
+    const col1Width = tableWidth - 50;
+    const rowHeight = 9;
+
+    // Draw table rows
+    const rows = [
+      ['Worked Hours (actual)', `${payslip.worked_hours || 0} h`],
+      ['Payable Hours (capped)', `${payslip.payable_hours || 0} h`],
+      ['Late', `${Math.floor((payslip.late_minutes || 0) / 60)}h ${(payslip.late_minutes || 0) % 60}m`],
+      ['SSS', `P${Number(payslip.sss || 300)}`],
+      ['PhilHealth', `P${Number(payslip.philhealth || 250)}`],
+      ['Pag-IBIG', `P${Number(payslip.pagibig || 200)}`],
+      ['Gross (week)', `P${Number(payslip.gross_pay || 0)}`],
+      ['Net (week)', `P${Number(payslip.net_pay || 0)}`]
+    ];
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+
+    const tableStartY = y;
+
+    rows.forEach((row, index) => {
+      // Draw horizontal line at top of row
+      doc.line(tableX, y, tableX + tableWidth, y);
+
+      // Draw text
+      doc.setFont('helvetica', index >= 6 ? 'bold' : 'normal');
+      doc.text(row[0], tableX + 3, y + 6.5);
+      doc.text(row[1], tableX + tableWidth - 3, y + 6.5, { align: 'right' });
+
+      y += rowHeight;
+    });
+
+    // Bottom line
+    doc.line(tableX, y, tableX + tableWidth, y);
+
+    // Left and right vertical lines
+    doc.line(tableX, tableStartY, tableX, y);
+    doc.line(tableX + tableWidth, tableStartY, tableX + tableWidth, y);
+    // Middle vertical line
+    doc.line(tableX + col1Width, tableStartY, tableX + col1Width, y);
+
+    // Footer (centered)
+    y += 12;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Received by: _____________________', pageWidth / 2, y, { align: 'center' });
+    y += 8;
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, pageWidth / 2, y, { align: 'center' });
+
+    // Download
+    doc.save(`payslip_${(emp.name || payslip.employee_id).replace(/\s+/g, '_')}_${payslip.week_start}.pdf`);
+    toastSuccess('Payslip PDF downloaded successfully');
+  };
+
+  // Print payslip receipt
+  window.printPayslipReceipt = function() {
+    if (!currentViewPayslip) {
+      toastError('No payslip selected');
+      return;
+    }
+
+    const emp = currentViewEmployee || {};
+    const receiptHTML = generateReceiptHTML(currentViewPayslip, emp);
+
+    const printWindow = window.open('', '_blank', 'width=450,height=700');
+    printWindow.document.write(receiptHTML);
+    printWindow.document.close();
+
+    printWindow.onload = function() {
+      printWindow.print();
+    };
   };
 
   // Close modal handlers
