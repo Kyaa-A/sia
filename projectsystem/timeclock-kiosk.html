@@ -290,13 +290,13 @@
   <div class="clock" id="liveClock">--:--:--</div>
 
   <div class="container">
-    <div class="scanner-container" style="border:3px solid #10b981;border-radius:12px">
-      <div id="reader">
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:20px">
-          <div style="font-size:48px;margin-bottom:16px">📷</div>
-          <div style="font-size:16px;margin-bottom:8px">Initializing Camera...</div>
-          <div style="font-size:12px;opacity:0.7">Please allow camera access when prompted</div>
-        </div>
+    <div class="scanner-container" style="border:3px solid #10b981;border-radius:12px;position:relative">
+      <video id="videoElement" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+      <canvas id="scanCanvas" style="display:none"></canvas>
+      <div id="loadingOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;background:rgba(0,0,0,0.8)">
+        <div style="font-size:48px;margin-bottom:16px">📷</div>
+        <div style="font-size:16px;margin-bottom:8px">Initializing Camera...</div>
+        <div style="font-size:12px;opacity:0.7">Please allow camera access when prompted</div>
       </div>
     </div>
 
@@ -372,8 +372,8 @@
   <script src="supabase-config.js"></script>
   <script src="supabase-db.js"></script>
 
-  <!-- QR Code Scanner Library -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- QR Code Scanner Library - jsQR is simpler and more reliable -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
   <script>
   (function() {
@@ -388,12 +388,18 @@
     const photoPreview = document.getElementById('photoPreview');
     const photoCanvas = document.getElementById('photoCanvas');
 
-    let html5QrCode = null;
+    let videoStream = null;
+    let scanningActive = false;
     let scannedEmployee = null;
     let capturedPhoto = null;
     let isProcessing = false;
     let employees = [];
     let attendance = [];
+
+    const videoElement = document.getElementById('videoElement');
+    const scanCanvas = document.getElementById('scanCanvas');
+    const scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+    const loadingOverlay = document.getElementById('loadingOverlay');
 
     // Update live clock
     function updateClock() {
@@ -440,60 +446,91 @@
       }
     }
 
-    // Initialize QR Scanner
+    // Initialize QR Scanner using jsQR
     async function initScanner() {
       try {
-        // Get available cameras
-        const cameras = await Html5Qrcode.getCameras();
-        console.log('Available cameras:', cameras);
-
-        if (!cameras || cameras.length === 0) {
-          throw new Error('No cameras found');
-        }
-
-        html5QrCode = new Html5Qrcode("reader", {
-          verbose: true,
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
+        // Request camera access
+        const constraints = {
+          video: {
+            facingMode: 'environment', // Prefer back camera
+            width: { ideal: 640 },
+            height: { ideal: 480 }
           }
-        });
-
-        const config = {
-          fps: 30, // Higher FPS for faster detection
-          qrbox: { width: 280, height: 280 }, // Slightly larger scan area
-          aspectRatio: 1.0,
-          disableFlip: false, // Try both normal and mirrored
-          formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
         };
 
-        // Use first available camera (usually the one user selected)
-        const cameraId = cameras[0].id;
-        console.log('Using camera:', cameraId);
+        try {
+          videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e) {
+          // Fallback to any camera
+          console.log('Back camera failed, trying any camera');
+          videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
 
-        await html5QrCode.start(
-          cameraId,
-          config,
-          (decodedText, decodedResult) => {
-            console.log('=== QR DETECTED ===');
-            console.log('Text:', decodedText);
-            console.log('Result:', decodedResult);
-            onScanSuccess(decodedText, false);
-          },
-          (errorMessage, error) => {
-            // Only log occasionally to avoid spam
-            if (Math.random() < 0.01) {
-              console.log('Scanning...', errorMessage);
-            }
-          }
-        );
+        videoElement.srcObject = videoStream;
 
+        // Wait for video to be ready
+        await new Promise((resolve) => {
+          videoElement.onloadedmetadata = () => {
+            videoElement.play();
+            resolve();
+          };
+        });
+
+        // Set canvas size to match video
+        scanCanvas.width = videoElement.videoWidth;
+        scanCanvas.height = videoElement.videoHeight;
+
+        // Hide loading overlay
+        loadingOverlay.style.display = 'none';
+
+        console.log('Camera ready:', videoElement.videoWidth, 'x', videoElement.videoHeight);
         setStatus('Ready to scan - Show your QR code', 'ready');
+
+        // Start scanning loop
+        scanningActive = true;
+        requestAnimationFrame(scanFrame);
+
       } catch (err) {
         console.error('Scanner init error:', err);
+        loadingOverlay.innerHTML = `
+          <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+          <div style="font-size:16px;margin-bottom:8px">Camera not available</div>
+          <div style="font-size:12px;opacity:0.7">Use file upload or manual entry below</div>
+        `;
         setStatus('Camera not available. Use file upload or manual entry.', 'error');
         startScanBtn.style.display = 'block';
         startScanBtn.textContent = 'Retry Camera';
       }
+    }
+
+    // Scan frame using jsQR
+    function scanFrame() {
+      if (!scanningActive || isProcessing) {
+        if (scanningActive) requestAnimationFrame(scanFrame);
+        return;
+      }
+
+      if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+        // Draw video frame to canvas
+        scanCtx.drawImage(videoElement, 0, 0, scanCanvas.width, scanCanvas.height);
+
+        // Get image data for jsQR
+        const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+
+        // Try to decode QR code
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert' // Try both normal and inverted
+        });
+
+        if (code) {
+          console.log('=== QR DETECTED ===');
+          console.log('Data:', code.data);
+          onScanSuccess(code.data, false);
+          return; // Stop scanning after successful detection
+        }
+      }
+
+      requestAnimationFrame(scanFrame);
     }
 
     // Handle successful QR scan
@@ -594,9 +631,7 @@
         }
 
         // Pause scanner while confirming
-        if (html5QrCode) {
-          await html5QrCode.pause();
-        }
+        scanningActive = false;
 
       } catch (err) {
         console.error('Scan processing error:', err);
@@ -612,8 +647,7 @@
     // Capture photo from video stream
     async function capturePhoto() {
       try {
-        const videoElement = document.querySelector('#reader video');
-        if (!videoElement) {
+        if (!videoElement || !videoElement.videoWidth) {
           console.warn('No video element found');
           return;
         }
@@ -711,12 +745,9 @@
       setStatus('Ready to scan - Show your QR code', 'ready');
 
       // Resume scanner
-      if (html5QrCode) {
-        try {
-          await html5QrCode.resume();
-        } catch (err) {
-          console.warn('Could not resume scanner:', err);
-        }
+      if (videoStream) {
+        scanningActive = true;
+        requestAnimationFrame(scanFrame);
       }
     }
 
@@ -730,7 +761,7 @@
     confirmBtn.addEventListener('click', confirmAction);
     cancelBtn.addEventListener('click', cancelAction);
 
-    // Scan QR from uploaded file
+    // Scan QR from uploaded file using jsQR
     window.scanQRFromFile = async function() {
       const fileInput = document.getElementById('qrFileInput');
       if (!fileInput.files || !fileInput.files[0]) return;
@@ -739,15 +770,34 @@
       setStatus('Scanning image...', 'processing');
 
       try {
-        const html5QrCodeScanner = new Html5Qrcode("reader-file-scan");
-        const result = await html5QrCodeScanner.scanFile(file, true);
-        console.log('File scan result:', result);
+        // Load image
+        const img = new Image();
+        const imageLoaded = new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+        img.src = URL.createObjectURL(file);
+        await imageLoaded;
 
-        // Clear the scanner instance
-        html5QrCodeScanner.clear();
+        // Draw to canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
 
-        // Process the result
-        onScanSuccess(result, true);
+        // Get image data and scan with jsQR
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+        URL.revokeObjectURL(img.src);
+
+        if (code) {
+          console.log('File scan result:', code.data);
+          onScanSuccess(code.data, true);
+        } else {
+          throw new Error('No QR code found in image');
+        }
       } catch (err) {
         console.error('File scan error:', err);
         setStatus('Could not read QR from image', 'error');
