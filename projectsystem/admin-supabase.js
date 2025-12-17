@@ -613,11 +613,14 @@
     const nextBtn = document.getElementById('salarySlipsNext');
     if (!container) return;
 
-    // Filter by search term
-    let filtered = payslips;
+    // Sort by date (newest first) then filter by search term
+    let filtered = [...payslips].sort((a, b) => {
+      // Sort by week_start descending (newest first)
+      return new Date(b.week_start) - new Date(a.week_start);
+    });
     if (salarySlipsSearchTerm) {
       const term = salarySlipsSearchTerm.toLowerCase();
-      filtered = payslips.filter(slip => {
+      filtered = filtered.filter(slip => {
         const emp = slip.employees || {};
         const name = (emp.name || '').toLowerCase();
         const id = (slip.employee_id || '').toLowerCase();
