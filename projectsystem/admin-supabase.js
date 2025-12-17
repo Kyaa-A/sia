@@ -1185,7 +1185,10 @@
              a.date <= periodEnd;
     });
 
-    // Count approved leave days within this period
+    // Get attendance dates for overlap checking
+    const attendanceDates = new Set(periodAttendance.map(a => a.date));
+
+    // Count approved leave days within this period (excluding days with attendance to prevent double-counting)
     const approvedLeaveDays = leaveRequests.filter(leave => {
       if (String(leave.employee_id) !== String(employeeId) || leave.status !== 'Approved') return false;
       const leaveStart = new Date(leave.start_date);
@@ -1200,8 +1203,16 @@
       const periodEndDate = new Date(periodEnd);
       const effectiveStart = leaveStart < periodStartDate ? periodStartDate : leaveStart;
       const effectiveEnd = leaveEnd > periodEndDate ? periodEndDate : leaveEnd;
-      const days = Math.floor((effectiveEnd - effectiveStart) / (1000 * 60 * 60 * 24)) + 1;
-      return total + days;
+
+      // Count leave days that DON'T overlap with attendance (prevent double-counting)
+      let leaveDaysCount = 0;
+      for (let d = new Date(effectiveStart); d <= effectiveEnd; d.setDate(d.getDate() + 1)) {
+        const dateStr = formatDateLocal(d);
+        if (!attendanceDates.has(dateStr)) {
+          leaveDaysCount++;
+        }
+      }
+      return total + leaveDaysCount;
     }, 0);
 
     // Calculate days worked and hours
@@ -1214,6 +1225,7 @@
 
     // Calculate gross pay (salary field now stores daily rate directly)
     const dailyRate = emp.salary || 510;
+    const usingDefaultRate = !emp.salary;
     const grossPay = daysWorked * dailyRate;
 
     // Get statutory deductions (multiply by 4 for monthly)
@@ -1302,9 +1314,13 @@
       const overtimeHours = (totalHours - maxRegularHours).toFixed(1);
       notice = `ℹ️ Note: ${overtimeHours} overtime hours detected. Currently paid at regular rate.`;
     }
+    // Warning for missing salary (using default rate)
+    if (usingDefaultRate && !notice) {
+      notice = `⚠️ Warning: Employee has no salary set. Using default rate of ₱510/day.`;
+    }
     if (els.notice) {
       els.notice.textContent = notice;
-      els.notice.style.color = (netPay < 0 || !canRunPayroll) ? '#dc2626' : (totalHours > maxRegularHours ? '#d97706' : '#6b7280');
+      els.notice.style.color = (netPay < 0 || !canRunPayroll || usingDefaultRate) ? '#dc2626' : (totalHours > maxRegularHours ? '#d97706' : '#6b7280');
     }
 
     // Disable/enable confirm button based on whether payroll can be run
@@ -1348,11 +1364,35 @@
 
     const periodLabel = data.periodType === 'monthly' ? 'month' : 'week';
 
-    // Check if there's an approved payslip for this period (safety check)
-    const existingPayslip = payslips.find(p => String(p.employee_id) === String(data.employeeId) && p.week_start === data.weekStart);
-    if (existingPayslip && existingPayslip.status === 'Approved') {
-      if (window.toastError) toastError('Error', 'Cannot modify an approved payslip. Please reject it first if changes are needed.');
-      return;
+    // FRESH DATABASE CHECK: Prevent race conditions and check approved status
+    try {
+      const { data: freshPayslips, error: checkError } = await supabaseClient
+        .from('payslips')
+        .select('id, status, period_type')
+        .eq('employee_id', data.employeeId)
+        .eq('week_start', data.weekStart);
+
+      if (checkError) throw checkError;
+
+      // Check for approved payslip (any period type)
+      const approvedPayslip = freshPayslips?.find(p => p.status === 'Approved');
+      if (approvedPayslip) {
+        if (window.toastError) toastError('Error', 'Cannot modify an approved payslip. Please reject it first if changes are needed.');
+        return;
+      }
+
+      // Check for conflicting period type (e.g., trying to create monthly when weekly exists)
+      const conflictingPayslip = freshPayslips?.find(p => p.period_type && p.period_type !== data.periodType);
+      if (conflictingPayslip) {
+        const existingType = conflictingPayslip.period_type === 'monthly' ? 'Monthly' : 'Weekly';
+        const newType = data.periodType === 'monthly' ? 'Monthly' : 'Weekly';
+        if (!confirm(`A ${existingType} payslip already exists for this period. Creating a ${newType} payslip will overwrite it. Continue?`)) {
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Error checking existing payslips:', err);
+      // Continue anyway if check fails, upsert will handle conflicts
     }
 
     // Warn if no days worked
