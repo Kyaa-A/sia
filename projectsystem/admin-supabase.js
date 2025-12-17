@@ -1904,7 +1904,7 @@
     modal.style.display = 'flex';
   };
 
-  // Download QR code as image
+  // Download QR code as image WITH employee name and ID
   window.downloadEmployeeQR = function() {
     const container = document.getElementById('qrCodeContainer');
     if (!container) {
@@ -1913,30 +1913,71 @@
     }
 
     const img = container.querySelector('img');
-    const canvas = container.querySelector('canvas');
+    const qrCanvas = container.querySelector('canvas');
 
-    // Get image source
-    let imgSrc = '';
+    // Get QR image source
+    let qrSrc = '';
     if (img && img.src) {
-      imgSrc = img.src;
-    } else if (canvas) {
-      imgSrc = canvas.toDataURL('image/png');
+      qrSrc = img.src;
+    } else if (qrCanvas) {
+      qrSrc = qrCanvas.toDataURL('image/png');
     }
 
-    if (!imgSrc) {
+    if (!qrSrc) {
       if (window.toastError) toastError('Error', 'No QR code to download');
       return;
     }
 
-    // Direct download of the QR image
-    const link = document.createElement('a');
-    link.download = `QR-${currentQREmployeeName || 'Employee'}-${currentQREmployeeId}.png`;
-    link.href = imgSrc;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Create new image from QR
+    const qrImg = new Image();
+    qrImg.onload = function() {
+      // Create canvas with QR + employee info
+      const downloadCanvas = document.createElement('canvas');
+      const ctx = downloadCanvas.getContext('2d');
 
-    if (window.toastSuccess) toastSuccess('Success', 'QR code downloaded');
+      const qrSize = 256;
+      const padding = 30;
+      const headerHeight = 50;
+      const footerHeight = 70;
+
+      downloadCanvas.width = qrSize + (padding * 2);
+      downloadCanvas.height = qrSize + headerHeight + footerHeight;
+
+      // White background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, downloadCanvas.width, downloadCanvas.height);
+
+      // Draw employee name at top
+      ctx.fillStyle = '#1e3a5f';
+      ctx.font = 'bold 20px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(currentQREmployeeName || 'Employee', downloadCanvas.width / 2, 30);
+
+      // Draw QR code
+      ctx.drawImage(qrImg, padding, headerHeight, qrSize, qrSize);
+
+      // Draw employee ID below QR
+      ctx.fillStyle = '#374151';
+      ctx.font = 'bold 18px Arial, sans-serif';
+      ctx.fillText(`ID: ${currentQREmployeeId}`, downloadCanvas.width / 2, headerHeight + qrSize + 25);
+
+      // Draw company name at bottom
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '14px Arial, sans-serif';
+      ctx.fillText('C4S Food Solution', downloadCanvas.width / 2, headerHeight + qrSize + 50);
+
+      // Download
+      const link = document.createElement('a');
+      link.download = `QR-${currentQREmployeeName || 'Employee'}-${currentQREmployeeId}.png`;
+      link.href = downloadCanvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      if (window.toastSuccess) toastSuccess('Success', 'QR code downloaded with employee info');
+    };
+
+    qrImg.src = qrSrc;
   };
 
 
