@@ -340,13 +340,8 @@
     </button>
 
     <p class="instructions">
-      Position your QR code within the frame
+      Position your QR code within the frame - scanning automatically
     </p>
-
-    <!-- Debug: Capture & Scan button -->
-    <div style="margin-top:12px;text-align:center">
-      <button onclick="captureAndScan()" style="background:#f59e0b;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600">📸 Capture & Scan</button>
-    </div>
 
     <!-- Scan QR from Image File -->
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb">
@@ -378,10 +373,6 @@
 
   <!-- QR Scanner Library - local files to avoid CORS -->
   <script src="qr-scanner.umd.min.js"></script>
-  <script>
-    // Set worker path for qr-scanner
-    QrScanner.WORKER_PATH = 'qr-scanner-worker.min.js';
-  </script>
 
   <script>
   (function() {
@@ -460,7 +451,7 @@
         qrScanner = new QrScanner(
           videoElement,
           result => {
-            console.log('=== QR DETECTED (native) ===');
+            console.log('=== QR DETECTED ===');
             console.log('Data:', result.data);
             if (!isProcessing) {
               qrScanner.stop();
@@ -469,10 +460,20 @@
           },
           {
             returnDetailedScanResult: true,
-            highlightScanRegion: false,
-            highlightCodeOutline: false,
+            highlightScanRegion: true,  // Show scan region for user feedback
+            highlightCodeOutline: true, // Highlight detected QR
             preferredCamera: 'environment',
-            maxScansPerSecond: 25  // High scan rate for fast detection
+            maxScansPerSecond: 30,  // Higher scan rate
+            // Scan center region only (faster + matches the overlay)
+            calculateScanRegion: (video) => {
+              const size = Math.min(video.videoWidth, video.videoHeight) * 0.7;
+              const x = (video.videoWidth - size) / 2;
+              const y = (video.videoHeight - size) / 2;
+              return {
+                x: x, y: y, width: size, height: size,
+                downScaledWidth: 400, downScaledHeight: 400
+              };
+            }
           }
         );
 
