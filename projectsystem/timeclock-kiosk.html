@@ -501,12 +501,24 @@
     }
 
     // Fast scanning loop using QrScanner.scanImage
+    let scanCount = 0;
     function startFastScanning() {
-      if (scanInterval) return;
+      if (scanInterval) {
+        console.log('Scanning already running');
+        return;
+      }
+
+      console.log('Starting fast scanning loop...');
 
       scanInterval = setInterval(async () => {
         if (isProcessing) return;
         if (!videoElement || videoElement.readyState < 2) return;
+        if (!scanCanvas || !scanCtx) {
+          console.error('Canvas not ready');
+          return;
+        }
+
+        scanCount++;
 
         try {
           // Capture frame
@@ -517,14 +529,19 @@
 
           console.log('=== QR DETECTED ===');
           console.log('Data:', result.data);
+          stopFastScanning(); // Stop scanning before processing
           onScanSuccess(result.data, false);
 
         } catch (err) {
           // No QR found - this is normal, keep scanning
+          // Log every 20 scans (~3 seconds) to show it's running
+          if (scanCount % 20 === 0) {
+            console.log('Scanning... (' + scanCount + ' frames checked)');
+          }
         }
       }, 150); // Scan every 150ms (~7 times per second)
 
-      console.log('Fast scanning started');
+      console.log('Fast scanning started!');
     }
 
     function stopFastScanning() {
