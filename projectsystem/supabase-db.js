@@ -547,6 +547,8 @@ const db = {
         total_deductions: payslip.totalDeductions || 0,
         net_pay: payslip.netPay,
         worked_hours: payslip.workedHours || 0,
+        payable_hours: payslip.payableHours || 0,
+        late_minutes: payslip.lateMinutes || 0,
         status: payslip.status || 'Pending'
       }], { onConflict: 'employee_id,week_start' })
       .select()

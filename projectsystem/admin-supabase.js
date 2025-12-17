@@ -1116,6 +1116,9 @@
     }
 
     // Store calculation data for confirmation
+    // Calculate payable hours (capped at 8 per day, 48 per week)
+    const payableHours = Math.min(totalHours, 48);
+
     window._payrollData = {
       employeeId,
       weekStart,
@@ -1128,6 +1131,8 @@
       totalDeductions: daysWorked > 0 ? (statutoryDeductions + lateDeduction) : 0,
       netPay: daysWorked > 0 ? Math.max(0, netPay) : 0,
       workedHours: totalHours,
+      payableHours: payableHours,
+      lateMinutes: totalLateMins,
       daysWorked
     };
   }
