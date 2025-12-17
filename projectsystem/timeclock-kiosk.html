@@ -343,6 +343,11 @@
       Position your QR code within the frame
     </p>
 
+    <!-- Debug: Capture & Scan button -->
+    <div style="margin-top:12px;text-align:center">
+      <button onclick="captureAndScan()" style="background:#f59e0b;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600">📸 Capture & Scan</button>
+    </div>
+
     <!-- Scan QR from Image File -->
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb">
       <p style="font-size:12px;color:#6b7280;margin-bottom:8px">Upload QR code image:</p>
@@ -449,7 +454,7 @@
     // Initialize QR Scanner using qr-scanner library
     async function initScanner() {
       try {
-        // Create QR Scanner instance with aggressive settings
+        // Create QR Scanner with minimal config - let library handle everything
         qrScanner = new QrScanner(
           videoElement,
           result => {
@@ -458,16 +463,11 @@
             onScanSuccess(result.data, false);
           },
           {
-            preferredCamera: 'environment',
-            highlightScanRegion: true,
-            highlightCodeOutline: true,
             returnDetailedScanResult: true,
-            maxScansPerSecond: 30
+            highlightScanRegion: true,
+            highlightCodeOutline: true
           }
         );
-
-        // Try all inversion modes for better detection
-        qrScanner.setInversionMode('both');
 
         // Start scanner
         await qrScanner.start();
@@ -477,6 +477,10 @@
 
         console.log('QR Scanner started successfully');
         console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+
+        // Log scanner state
+        console.log('Scanner active:', qrScanner._active);
+
         setStatus('Ready to scan - Show your QR code', 'ready');
 
       } catch (err) {
@@ -762,6 +766,44 @@
 
       // Clear input
       if (input) input.value = '';
+    };
+
+    // Capture current frame and scan it (debug function)
+    window.captureAndScan = async function() {
+      try {
+        setStatus('Capturing...', 'processing');
+
+        // Get video element
+        const video = qrScanner?.$video || videoElement;
+        if (!video || !video.videoWidth) {
+          showToast('Camera not ready', 'error');
+          return;
+        }
+
+        // Capture frame to canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+
+        // Convert to blob
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
+        console.log('Captured frame:', canvas.width, 'x', canvas.height);
+
+        // Scan using QrScanner.scanImage
+        const result = await QrScanner.scanImage(blob, { returnDetailedScanResult: true });
+        console.log('=== CAPTURE SCAN DETECTED ===');
+        console.log('Data:', result.data);
+        onScanSuccess(result.data, false);
+
+      } catch (err) {
+        console.error('Capture scan error:', err);
+        setStatus('No QR code found in frame', 'error');
+        showToast('No QR code detected. Try again.', 'error');
+        setTimeout(() => setStatus('Ready to scan - Show your QR code', 'ready'), 2000);
+      }
     };
 
     // Initialize
