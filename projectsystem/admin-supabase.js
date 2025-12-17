@@ -649,6 +649,30 @@
 
       const attendanceRecords = attendanceData || [];
 
+      // Helper function to format time nicely
+      function formatTimeDisplay(timeStr) {
+        if (!timeStr || timeStr === '—') return '—';
+        try {
+          // Handle ISO format (2025-12-16T09:38:13.227+00:00)
+          if (timeStr.includes('T')) {
+            const date = new Date(timeStr);
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+          }
+          // Handle simple time format (09:38 or 09:38:13)
+          if (timeStr.includes(':')) {
+            const parts = timeStr.split(':');
+            let hours = parseInt(parts[0], 10);
+            const mins = parts[1];
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${hours}:${mins} ${ampm}`;
+          }
+          return timeStr;
+        } catch (e) {
+          return timeStr;
+        }
+      }
+
       if (attendanceRecords.length === 0) {
         content.innerHTML = `
           <div style="text-align:center;padding:30px;color:#6b7280;background:#fef3c7;border-radius:8px">
@@ -685,21 +709,49 @@
           totalHours += hours;
           totalLate += late;
 
-          const lateDisplay = late > 0 ? `${Math.floor(late/60)}h ${late%60}m` : '—';
-          const lateColor = late > 0 ? '#ef4444' : '#6b7280';
+          // Format late display
+          let lateDisplay = '—';
+          if (late > 0) {
+            if (late >= 60) {
+              lateDisplay = `${Math.floor(late/60)}h ${late%60}m`;
+            } else {
+              lateDisplay = `${late}m`;
+            }
+          }
+          const lateColor = late > 0 ? '#ef4444' : '#10b981';
+
+          // Format time in/out nicely
+          const timeInDisplay = formatTimeDisplay(record.time_in);
+          const timeOutDisplay = formatTimeDisplay(record.time_out);
 
           tableHTML += `
             <tr>
               <td style="padding:10px;border-bottom:1px solid #e5e7eb"><strong>${dayName}</strong> ${dateStr}</td>
-              <td style="padding:10px;text-align:center;border-bottom:1px solid #e5e7eb">${record.time_in || '—'}</td>
-              <td style="padding:10px;text-align:center;border-bottom:1px solid #e5e7eb">${record.time_out || '—'}</td>
+              <td style="padding:10px;text-align:center;border-bottom:1px solid #e5e7eb">${timeInDisplay}</td>
+              <td style="padding:10px;text-align:center;border-bottom:1px solid #e5e7eb">${timeOutDisplay}</td>
               <td style="padding:10px;text-align:right;border-bottom:1px solid #e5e7eb;font-weight:600">${hours.toFixed(1)}h</td>
               <td style="padding:10px;text-align:right;border-bottom:1px solid #e5e7eb;color:${lateColor}">${lateDisplay}</td>
             </tr>
           `;
         });
 
-        tableHTML += '</tbody></table>';
+        // Add total row
+        let totalLateDisplay = '—';
+        if (totalLate > 0) {
+          if (totalLate >= 60) {
+            totalLateDisplay = `${Math.floor(totalLate/60)}h ${totalLate%60}m`;
+          } else {
+            totalLateDisplay = `${totalLate}m`;
+          }
+        }
+
+        tableHTML += `
+            <tr style="background:#f3f4f6;font-weight:600">
+              <td style="padding:10px;border-top:2px solid #e5e7eb" colspan="3">Total (${attendanceRecords.length} day${attendanceRecords.length > 1 ? 's' : ''})</td>
+              <td style="padding:10px;text-align:right;border-top:2px solid #e5e7eb">${totalHours.toFixed(1)}h</td>
+              <td style="padding:10px;text-align:right;border-top:2px solid #e5e7eb;color:${totalLate > 0 ? '#ef4444' : '#10b981'}">${totalLateDisplay}</td>
+            </tr>
+          </tbody></table>`;
         content.innerHTML = tableHTML;
       }
 
@@ -711,29 +763,58 @@
       const pagibig = Number(payslip.pagibig) || 0;
       const lateDeduction = Number(payslip.late_deduction) || 0;
       const totalDeductions = sss + philhealth + pagibig + lateDeduction;
+      const workedHours = Number(payslip.worked_hours) || 0;
+      const lateMinutes = Number(payslip.late_minutes) || 0;
+
+      // Format late minutes nicely
+      let lateDisplay = '0m';
+      if (lateMinutes > 0) {
+        if (lateMinutes >= 60) {
+          lateDisplay = `${Math.floor(lateMinutes/60)}h ${lateMinutes%60}m`;
+        } else {
+          lateDisplay = `${lateMinutes}m`;
+        }
+      }
 
       summary.innerHTML = `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <div>
-            <div style="font-size:12px;opacity:0.8">Worked Hours</div>
-            <div style="font-size:18px;font-weight:600">${payslip.worked_hours || 0}h</div>
+        <div style="margin-bottom:12px;font-size:13px;font-weight:600;text-transform:uppercase;opacity:0.7">Payslip Summary</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+            <span style="opacity:0.8">Worked Hours</span>
+            <span style="font-weight:600">${workedHours.toFixed(1)}h</span>
           </div>
-          <div>
-            <div style="font-size:12px;opacity:0.8">Late Minutes</div>
-            <div style="font-size:18px;font-weight:600">${payslip.late_minutes || 0}m</div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+            <span style="opacity:0.8">Late</span>
+            <span style="font-weight:600;color:${lateMinutes > 0 ? '#fca5a5' : '#10b981'}">${lateDisplay}</span>
           </div>
-          <div>
-            <div style="font-size:12px;opacity:0.8">Gross Pay</div>
-            <div style="font-size:18px;font-weight:600">₱${gross.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+            <span style="opacity:0.8">Gross Pay</span>
+            <span style="font-weight:600">₱${gross.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
           </div>
-          <div>
-            <div style="font-size:12px;opacity:0.8">Total Deductions</div>
-            <div style="font-size:18px;font-weight:600;color:#fca5a5">-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+            <span style="opacity:0.8">SSS</span>
+            <span style="font-weight:600;color:#fca5a5">-₱${sss.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+            <span style="opacity:0.8">PhilHealth</span>
+            <span style="font-weight:600;color:#fca5a5">-₱${philhealth.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+            <span style="opacity:0.8">Pag-IBIG</span>
+            <span style="font-weight:600;color:#fca5a5">-₱${pagibig.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+            <span style="opacity:0.8">Late Deduction</span>
+            <span style="font-weight:600;color:#fca5a5">-₱${lateDeduction.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+            <span style="opacity:0.8">Total Deductions</span>
+            <span style="font-weight:600;color:#fca5a5">-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
           </div>
         </div>
-        <div style="border-top:1px solid rgba(255,255,255,0.3);margin-top:16px;padding-top:16px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:16px">NET PAY</span>
-          <span style="font-size:24px;font-weight:700;color:#10b981">₱${net.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+        <div style="margin-top:16px;padding-top:16px;border-top:2px solid rgba(255,255,255,0.3);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:18px;font-weight:600">NET PAY</span>
+          <span style="font-size:28px;font-weight:700;color:#10b981">₱${net.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
         </div>
       `;
 
