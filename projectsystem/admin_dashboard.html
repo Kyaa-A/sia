@@ -45,6 +45,7 @@
           <li><a href="#" class="nav-link" data-section="employees"> Employees Section</a></li>
           <li><a href="#" class="nav-link" data-section="archive"> Archive</a></li>
           <li><a href="#" class="nav-link" data-section="timeclock"> Time Clock</a></li>
+          <li><a href="timeclock-kiosk.html" target="_blank" style="color:#10b981;display:block;padding:12px 16px;text-decoration:none;border-radius:8px;transition:background 0.2s"> QR Kiosk Scanner</a></li>
           <li><a href="#" class="nav-link" data-section="salary"> Salary Slips</a></li>
           <li><a href="#" class="nav-link" data-section="payroll"> Payroll</a></li>
           <li><a href="#" class="nav-link" data-section="leaves"> Leave Management</a></li>
@@ -56,12 +57,6 @@
 
     <!-- Main Content -->
     <div class="dashboard">
-    <header>
-      <div class="controls">
-        <!-- Header search and top actions removed; employees page will show the search inside the white card per design. -->
-        <div class="top-actions"></div>
-      </div>
-    </header>
 
     <div id="home" class="section-content active">
       
@@ -515,6 +510,8 @@
 
   <!-- Chart.js (for attendance chart) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- QR Code Generation Library (qrcodejs) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="shared-utils.js"></script>
   <script src="admin-supabase.js"></script>
 
@@ -613,6 +610,27 @@
         <button id="closePaystubModal" class="secondary" style="padding:6px 12px">Close</button>
       </div>
       <div id="paystubContent"></div>
+    </div>
+  </div>
+
+  <!-- Employee QR Code Modal -->
+  <div id="qrCodeModal" class="modal-backdrop" role="dialog" aria-hidden="true" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal" style="max-width:400px;width:95%;text-align:center">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0">Employee QR Code</h3>
+        <button onclick="document.getElementById('qrCodeModal').style.display='none'" class="secondary" style="padding:6px 12px">Close</button>
+      </div>
+      <div style="margin-bottom:16px">
+        <div id="qrEmployeeName" style="font-weight:600;font-size:18px;color:#1e3a5f;margin-bottom:4px"></div>
+        <div id="qrEmployeeId" style="color:#6b7280;font-size:14px"></div>
+      </div>
+      <div id="qrCodeContainer" style="background:#fff;padding:20px;border-radius:12px;display:inline-block;margin-bottom:16px">
+        <!-- QR Code will be rendered here -->
+      </div>
+      <p style="color:#6b7280;font-size:13px;margin-bottom:16px">Scan this QR code at the Time Clock Kiosk to clock in/out</p>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button onclick="downloadEmployeeQR()" style="background:#10b981;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600">Download QR</button>
+      </div>
     </div>
   </div>
 </body>

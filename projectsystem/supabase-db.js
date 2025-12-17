@@ -378,6 +378,52 @@ const db = {
     return { success: true, message: 'Time in cancelled successfully' };
   },
 
+  /**
+   * Update attendance with photo (for QR kiosk)
+   */
+  async updateAttendancePhoto(employeeId, date, photoBase64, photoType = 'time_in') {
+    try {
+      // Get the attendance record
+      const { data: existing, error: fetchError } = await supabaseClient
+        .from('attendance')
+        .select('id')
+        .eq('employee_id', employeeId)
+        .eq('date', date)
+        .single();
+
+      if (fetchError || !existing) {
+        console.warn('No attendance record found for photo update');
+        return null;
+      }
+
+      // Update with photo - store in appropriate column based on type
+      const updateData = {};
+      if (photoType === 'time_in') {
+        updateData.photo_in = photoBase64;
+      } else {
+        updateData.photo_out = photoBase64;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('attendance')
+        .update(updateData)
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      // If column doesn't exist, log warning but don't fail
+      if (error) {
+        console.warn('Could not save photo (column may not exist):', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (err) {
+      console.warn('Photo update error:', err);
+      return null;
+    }
+  },
+
   // =============================================
   // LEAVE REQUEST OPERATIONS
   // =============================================

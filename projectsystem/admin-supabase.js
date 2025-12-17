@@ -267,6 +267,7 @@
         <td>${emp.role}</td>
         <td>₱${Number(weeklySalary).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
         <td class="actions">
+          <button style="background:#6366f1;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer" onclick="showEmployeeQR('${emp.id}', '${emp.name.replace(/'/g, "\\'")}')">QR</button>
           <button style="background:#0ea5e9;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer" onclick="viewEmployeePayslips('${emp.id}', '${emp.name.replace(/'/g, "\\'")}')">Payslips</button>
           <button class="secondary" onclick="editEmployee('${emp.id}')">Edit</button>
           <button class="warn" onclick="archiveEmployee('${emp.id}')">Remove</button>
@@ -1857,6 +1858,87 @@
     leavesSearchQuery = e.target.value.trim();
     renderLeaves();
   });
+
+  // =============================================
+  // QR CODE GENERATION
+  // =============================================
+  let currentQREmployeeId = null;
+  let currentQREmployeeName = null;
+
+  window.showEmployeeQR = async function(empId, empName) {
+    currentQREmployeeId = empId;
+    currentQREmployeeName = empName;
+
+    const modal = document.getElementById('qrCodeModal');
+    const container = document.getElementById('qrCodeContainer');
+    const nameEl = document.getElementById('qrEmployeeName');
+    const idEl = document.getElementById('qrEmployeeId');
+
+    if (!modal || !container) return;
+
+    // Update labels
+    if (nameEl) nameEl.textContent = empName;
+    if (idEl) idEl.textContent = `ID: ${empId}`;
+
+    // Clear previous QR
+    container.innerHTML = '';
+
+    // Generate QR code with employee ID
+    const qrData = `C4S-EMP-${empId}`;
+
+    try {
+      // Create QR code using qrcodejs library
+      new QRCode(container, {
+        text: qrData,
+        width: 200,
+        height: 200,
+        colorDark: '#1e3a5f',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    } catch (err) {
+      console.error('QR generation error:', err);
+      container.innerHTML = '<p style="color:#ef4444">Failed to generate QR code</p>';
+    }
+
+    modal.style.display = 'flex';
+  };
+
+  // Download QR code as image
+  window.downloadEmployeeQR = function() {
+    const container = document.getElementById('qrCodeContainer');
+    if (!container) {
+      if (window.toastError) toastError('Error', 'QR container not found');
+      return;
+    }
+
+    const img = container.querySelector('img');
+    const canvas = container.querySelector('canvas');
+
+    // Get image source
+    let imgSrc = '';
+    if (img && img.src) {
+      imgSrc = img.src;
+    } else if (canvas) {
+      imgSrc = canvas.toDataURL('image/png');
+    }
+
+    if (!imgSrc) {
+      if (window.toastError) toastError('Error', 'No QR code to download');
+      return;
+    }
+
+    // Direct download of the QR image
+    const link = document.createElement('a');
+    link.download = `QR-${currentQREmployeeName || 'Employee'}-${currentQREmployeeId}.png`;
+    link.href = imgSrc;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    if (window.toastSuccess) toastSuccess('Success', 'QR code downloaded');
+  };
+
 
   // =============================================
   // INITIALIZE

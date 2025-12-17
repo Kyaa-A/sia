@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C4S Time Clock - QR Scanner</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+    .header p {
+      opacity: 0.8;
+      font-size: 14px;
+    }
+    .clock {
+      font-size: 48px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 20px;
+      font-variant-numeric: tabular-nums;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .scanner-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    #reader {
+      width: 100%;
+      height: 100%;
+    }
+    #reader video {
+      object-fit: cover;
+      width: 100%;
+      height: 100%;
+    }
+    .scanner-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 250px;
+      height: 250px;
+      border: 3px solid #10b981;
+      border-radius: 12px;
+      pointer-events: none;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+    }
+    .scanner-overlay {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { border-color: #10b981; }
+      50% { border-color: #34d399; box-shadow: 0 0 20px rgba(16, 185, 129, 0.5), 0 0 0 9999px rgba(0,0,0,0.5); }
+    }
+    .scanner-overlay::before,
+    .scanner-overlay::after {
+      content: '';
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border-color: #10b981;
+      border-style: solid;
+    }
+    .scanner-overlay::before {
+      top: -3px;
+      left: -3px;
+      border-width: 4px 0 0 4px;
+      border-radius: 8px 0 0 0;
+    }
+    .scanner-overlay::after {
+      bottom: -3px;
+      right: -3px;
+      border-width: 0 4px 4px 0;
+      border-radius: 0 0 8px 0;
+    }
+    .status {
+      text-align: center;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    .status.ready {
+      background: #ecfdf5;
+      color: #065f46;
+    }
+    .status.processing {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .result-card {
+      display: none;
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .result-card.show {
+      display: block;
+    }
+    .result-card .employee-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .result-card .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #1e3a5f, #2d5a87);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .result-card .details h3 {
+      font-size: 18px;
+      color: #1e3a5f;
+      margin-bottom: 4px;
+    }
+    .result-card .details p {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .result-card .photo-preview {
+      width: 100%;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .result-card .photo-preview.show {
+      display: block;
+    }
+    .result-card .time-info {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+    .result-card .time-info div {
+      text-align: center;
+    }
+    .result-card .time-info .label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+    .result-card .time-info .value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e3a5f;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #1e3a5f;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #2d5a87;
+    }
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+    }
+    .btn-group .btn {
+      flex: 1;
+    }
+    .instructions {
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+      margin-top: 16px;
+    }
+    .admin-link {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .admin-link:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    /* Hidden video for photo capture */
+    #photoCanvas {
+      display: none;
+    }
+    /* Toast styles */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+    }
+    .toast {
+      background: white;
+      padding: 16px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>C4S Food Solution</h1>
+    <p>Time Clock - QR Scanner</p>
+  </div>
+
+  <div class="clock" id="liveClock">--:--:--</div>
+
+  <div class="container">
+    <div class="scanner-container" style="border:3px solid #10b981;border-radius:12px">
+      <div id="reader">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#fff;text-align:center;padding:20px">
+          <div style="font-size:48px;margin-bottom:16px">📷</div>
+          <div style="font-size:16px;margin-bottom:8px">Initializing Camera...</div>
+          <div style="font-size:12px;opacity:0.7">Please allow camera access when prompted</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status ready" id="statusMessage">
+      Initializing camera...
+    </div>
+
+    <div class="result-card" id="resultCard">
+      <div class="employee-info">
+        <div class="avatar" id="empAvatar">?</div>
+        <div class="details">
+          <h3 id="empName">Employee Name</h3>
+          <p id="empRole">Role</p>
+        </div>
+      </div>
+      <img id="photoPreview" class="photo-preview" alt="Captured photo">
+      <div class="time-info">
+        <div>
+          <div class="label">Action</div>
+          <div class="value" id="actionType">Time In</div>
+        </div>
+        <div>
+          <div class="label">Time</div>
+          <div class="value" id="actionTime">--:--</div>
+        </div>
+        <div>
+          <div class="label">Date</div>
+          <div class="value" id="actionDate">--/--/--</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="actionButtons" style="display:none">
+      <div class="btn-group">
+        <button class="btn btn-success" id="confirmBtn">Confirm</button>
+        <button class="btn btn-danger" id="cancelBtn">Cancel</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="startScanBtn" style="display:none">
+      Start Scanner
+    </button>
+
+    <p class="instructions">
+      Position your QR code within the frame
+    </p>
+
+    <!-- Scan QR from Image File -->
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb">
+      <p style="font-size:12px;color:#6b7280;margin-bottom:8px">Upload QR code image:</p>
+      <input type="file" id="qrFileInput" accept="image/*" onchange="scanQRFromFile()" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;background:#fff">
+    </div>
+
+    <!-- Manual Entry Fallback -->
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb">
+      <p style="font-size:12px;color:#6b7280;margin-bottom:8px">Or enter Employee ID manually:</p>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="manualIdInput" placeholder="e.g. 4322" style="flex:1;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px">
+        <button onclick="manualClockIn()" style="background:#1e3a5f;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-weight:600">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="photoCanvas"></canvas>
+  <div id="reader-file-scan" style="display:none"></div>
+
+  <a href="admin_dashboard.html" class="admin-link">Admin Dashboard</a>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Supabase SDK -->
+  <script src="supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-db.js"></script>
+
+  <!-- QR Code Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <script>
+  (function() {
+    // Elements
+    const clockEl = document.getElementById('liveClock');
+    const statusEl = document.getElementById('statusMessage');
+    const resultCard = document.getElementById('resultCard');
+    const actionButtons = document.getElementById('actionButtons');
+    const startScanBtn = document.getElementById('startScanBtn');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const photoPreview = document.getElementById('photoPreview');
+    const photoCanvas = document.getElementById('photoCanvas');
+
+    let html5QrCode = null;
+    let scannedEmployee = null;
+    let capturedPhoto = null;
+    let isProcessing = false;
+    let employees = [];
+    let attendance = [];
+
+    // Update live clock
+    function updateClock() {
+      const now = new Date();
+      clockEl.textContent = now.toLocaleTimeString('en-US', {
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Toast notification
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `
+        <span style="color:${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#1e3a5f'}">
+          ${type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ'}
+        </span>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // Set status message
+    function setStatus(message, type = 'ready') {
+      statusEl.textContent = message;
+      statusEl.className = 'status ' + type;
+    }
+
+    // Load data from Supabase
+    async function loadData() {
+      try {
+        employees = await db.getEmployees();
+        attendance = await db.getAttendance();
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        showToast('Failed to load employee data', 'error');
+      }
+    }
+
+    // Initialize QR Scanner
+    async function initScanner() {
+      try {
+        html5QrCode = new Html5Qrcode("reader");
+
+        const config = {
+          fps: 15,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
+        };
+
+        // Use default camera (environment = back camera on phones, any available on desktop)
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            console.log('DETECTED:', decodedText);
+            onScanSuccess(decodedText, false);
+          },
+          onScanFailure
+        );
+
+        setStatus('Ready to scan - Show your QR code', 'ready');
+      } catch (err) {
+        console.error('Scanner init error:', err);
+        setStatus('Camera not available. Use file upload or manual entry.', 'error');
+        startScanBtn.style.display = 'block';
+        startScanBtn.textContent = 'Retry Camera';
+      }
+    }
+
+    // Handle successful QR scan
+    // skipPhoto = true when using manual entry (no camera photo needed)
+    async function onScanSuccess(decodedText, skipPhoto = false) {
+      console.log('QR Scanned:', decodedText, 'Skip photo:', skipPhoto);
+
+      if (isProcessing) {
+        console.log('Already processing, skipping');
+        return;
+      }
+      isProcessing = true;
+
+      try {
+        // Parse QR data (format: C4S-EMP-{employeeId})
+        const match = decodedText.match(/^C4S-EMP-(.+)$/);
+        console.log('Match result:', match);
+
+        if (!match) {
+          setStatus('Invalid QR code format', 'error');
+          showToast('Invalid QR code. Please use employee QR.', 'error');
+          setTimeout(() => {
+            setStatus('Ready to scan - Show your QR code', 'ready');
+            isProcessing = false;
+          }, 2000);
+          return;
+        }
+
+        const employeeId = match[1];
+
+        // Find employee
+        const emp = employees.find(e => String(e.id) === String(employeeId));
+        if (!emp) {
+          setStatus('Employee not found', 'error');
+          showToast('Employee not found in system', 'error');
+          setTimeout(() => {
+            setStatus('Ready to scan - Show your QR code', 'ready');
+            isProcessing = false;
+          }, 2000);
+          return;
+        }
+
+        scannedEmployee = emp;
+
+        // Capture photo from video feed (only if using QR scanner, not manual)
+        if (!skipPhoto) {
+          setStatus('Employee found! Capturing photo...', 'processing');
+          await capturePhoto();
+        } else {
+          setStatus('Employee found!', 'processing');
+          capturedPhoto = null; // No photo for manual entry
+        }
+
+        // Determine action (Time In or Time Out)
+        const today = new Date().toISOString().split('T')[0];
+        const todayAtt = attendance.find(a =>
+          String(a.employee_id) === String(emp.id) && a.date === today
+        );
+
+        const hasTimeIn = todayAtt && todayAtt.time_in;
+        const hasTimeOut = todayAtt && todayAtt.time_out;
+
+        // Update UI
+        document.getElementById('empAvatar').textContent = emp.name.charAt(0).toUpperCase();
+        document.getElementById('empName').textContent = emp.name;
+        document.getElementById('empRole').textContent = emp.role;
+        document.getElementById('actionTime').textContent = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit', minute: '2-digit', hour12: true
+        });
+        document.getElementById('actionDate').textContent = new Date().toLocaleDateString();
+
+        if (!hasTimeIn) {
+          document.getElementById('actionType').textContent = 'Time In';
+          document.getElementById('actionType').style.color = '#10b981';
+          setStatus(`${emp.name} - Ready to Time In`, 'processing');
+        } else if (!hasTimeOut) {
+          document.getElementById('actionType').textContent = 'Time Out';
+          document.getElementById('actionType').style.color = '#ef4444';
+          setStatus(`${emp.name} - Ready to Time Out`, 'processing');
+        } else {
+          setStatus(`${emp.name} already completed for today`, 'error');
+          showToast('Already timed in and out for today', 'error');
+          setTimeout(() => {
+            resetScanner();
+          }, 3000);
+          return;
+        }
+
+        // Show result card and buttons
+        resultCard.classList.add('show');
+        actionButtons.style.display = 'block';
+
+        // Show/hide photo preview based on whether photo was captured
+        if (capturedPhoto) {
+          photoPreview.classList.add('show');
+        } else {
+          photoPreview.classList.remove('show');
+        }
+
+        // Pause scanner while confirming
+        if (html5QrCode) {
+          await html5QrCode.pause();
+        }
+
+      } catch (err) {
+        console.error('Scan processing error:', err);
+        setStatus('Error processing scan', 'error');
+        setTimeout(() => resetScanner(), 2000);
+      }
+    }
+
+    function onScanFailure(error) {
+      // Normal when no QR in frame - do nothing
+    }
+
+    // Capture photo from video stream
+    async function capturePhoto() {
+      try {
+        const videoElement = document.querySelector('#reader video');
+        if (!videoElement) {
+          console.warn('No video element found');
+          return;
+        }
+
+        const canvas = photoCanvas;
+        canvas.width = videoElement.videoWidth || 640;
+        canvas.height = videoElement.videoHeight || 480;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoElement, 0, 0);
+
+        capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
+
+        // Show preview
+        photoPreview.src = capturedPhoto;
+        photoPreview.classList.add('show');
+
+      } catch (err) {
+        console.error('Photo capture error:', err);
+      }
+    }
+
+    // Confirm time action
+    async function confirmAction() {
+      if (!scannedEmployee) return;
+
+      try {
+        confirmBtn.disabled = true;
+        cancelBtn.disabled = true;
+        setStatus('Recording...', 'processing');
+
+        const today = new Date().toISOString().split('T')[0];
+        const todayAtt = attendance.find(a =>
+          String(a.employee_id) === String(scannedEmployee.id) && a.date === today
+        );
+
+        const hasTimeIn = todayAtt && todayAtt.time_in;
+
+        if (!hasTimeIn) {
+          // Time In
+          await db.timeIn(scannedEmployee.id, scannedEmployee.name, scannedEmployee.role);
+
+          // Store photo if captured
+          if (capturedPhoto) {
+            await db.updateAttendancePhoto(scannedEmployee.id, today, capturedPhoto, 'time_in');
+          }
+
+          setStatus(`${scannedEmployee.name} clocked in successfully!`, 'success');
+          showToast(`Welcome, ${scannedEmployee.name}!`, 'success');
+        } else {
+          // Time Out
+          await db.timeOut(scannedEmployee.id);
+
+          // Store photo if captured
+          if (capturedPhoto) {
+            await db.updateAttendancePhoto(scannedEmployee.id, today, capturedPhoto, 'time_out');
+          }
+
+          setStatus(`${scannedEmployee.name} clocked out successfully!`, 'success');
+          showToast(`Goodbye, ${scannedEmployee.name}!`, 'success');
+        }
+
+        // Reload attendance data
+        attendance = await db.getAttendance();
+
+        // Reset after 3 seconds
+        setTimeout(() => resetScanner(), 3000);
+
+      } catch (err) {
+        console.error('Action error:', err);
+        setStatus('Failed: ' + (err.message || 'Unknown error'), 'error');
+        showToast(err.message || 'Failed to record time', 'error');
+        setTimeout(() => resetScanner(), 3000);
+      }
+    }
+
+    // Cancel and reset
+    function cancelAction() {
+      showToast('Cancelled', 'info');
+      resetScanner();
+    }
+
+    // Reset scanner state
+    async function resetScanner() {
+      scannedEmployee = null;
+      capturedPhoto = null;
+      isProcessing = false;
+
+      resultCard.classList.remove('show');
+      actionButtons.style.display = 'none';
+      photoPreview.classList.remove('show');
+      confirmBtn.disabled = false;
+      cancelBtn.disabled = false;
+
+      setStatus('Ready to scan - Show your QR code', 'ready');
+
+      // Resume scanner
+      if (html5QrCode) {
+        try {
+          await html5QrCode.resume();
+        } catch (err) {
+          console.warn('Could not resume scanner:', err);
+        }
+      }
+    }
+
+    // Start scanner button (fallback)
+    startScanBtn.addEventListener('click', async () => {
+      startScanBtn.style.display = 'none';
+      await initScanner();
+    });
+
+    // Confirm/Cancel buttons
+    confirmBtn.addEventListener('click', confirmAction);
+    cancelBtn.addEventListener('click', cancelAction);
+
+    // Scan QR from uploaded file
+    window.scanQRFromFile = async function() {
+      const fileInput = document.getElementById('qrFileInput');
+      if (!fileInput.files || !fileInput.files[0]) return;
+
+      const file = fileInput.files[0];
+      setStatus('Scanning image...', 'processing');
+
+      try {
+        const html5QrCodeScanner = new Html5Qrcode("reader-file-scan");
+        const result = await html5QrCodeScanner.scanFile(file, true);
+        console.log('File scan result:', result);
+
+        // Clear the scanner instance
+        html5QrCodeScanner.clear();
+
+        // Process the result
+        onScanSuccess(result, true);
+      } catch (err) {
+        console.error('File scan error:', err);
+        setStatus('Could not read QR from image', 'error');
+        showToast('Could not detect QR code in image', 'error');
+        setTimeout(() => setStatus('Ready to scan - Show your QR code', 'ready'), 2000);
+      }
+
+      // Clear file input
+      fileInput.value = '';
+    };
+
+    // Manual clock in function
+    window.manualClockIn = function() {
+      const input = document.getElementById('manualIdInput');
+      const empId = input?.value?.trim();
+
+      if (!empId) {
+        showToast('Please enter an Employee ID', 'error');
+        return;
+      }
+
+      // Simulate QR scan with manual input (skip photo capture)
+      const qrData = `C4S-EMP-${empId}`;
+      onScanSuccess(qrData, true); // true = manual entry, skip photo
+
+      // Clear input
+      if (input) input.value = '';
+    };
+
+    // Initialize
+    async function init() {
+      setStatus('Loading...', 'processing');
+      await loadData();
+      await initScanner();
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>
