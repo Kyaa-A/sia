@@ -570,6 +570,7 @@
           setTimeout(() => {
             setStatus('Ready to scan - Show your QR code', 'ready');
             isProcessing = false;
+            resumeScanning();  // Restart camera
           }, 2000);
           return;
         }
@@ -584,6 +585,7 @@
           setTimeout(() => {
             setStatus('Ready to scan - Show your QR code', 'ready');
             isProcessing = false;
+            resumeScanning();  // Restart camera
           }, 2000);
           return;
         }
