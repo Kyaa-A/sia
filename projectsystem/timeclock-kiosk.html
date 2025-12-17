@@ -441,54 +441,50 @@
       }
     }
 
-    // QrScanner instance - using native continuous mode ONLY
-    let qrScanner = null;
+    // Ultra-fast scanning - bypass library's slow continuous mode
+    let scanning = false;
+    let scanCanvas = null;
+    let scanCtx = null;
 
-    // Initialize scanner
     async function initScanner() {
       try {
-        // Optimized for FAST detection
-        qrScanner = new QrScanner(
-          videoElement,
-          result => {
-            if (isProcessing) return;
-            console.log('=== QR DETECTED ===');
-            console.log('Data:', result.data);
-            qrScanner.pause();
-            onScanSuccess(result.data, false);
-          },
-          {
-            preferredCamera: 'environment',
-            returnDetailedScanResult: true,
-            // SPEED OPTIMIZATIONS:
-            maxScansPerSecond: 60,  // Maximum scan rate
-            highlightScanRegion: false,  // Disable for speed
-            highlightCodeOutline: false, // Disable for speed
-            inversionMode: 'original',   // Skip inverted check for speed
-            // Scan smaller center region for faster processing
-            calculateScanRegion: (video) => {
-              const smallestDimension = Math.min(video.videoWidth, video.videoHeight);
-              const scanSize = Math.round(smallestDimension * 0.6); // 60% of frame
-              return {
-                x: Math.round((video.videoWidth - scanSize) / 2),
-                y: Math.round((video.videoHeight - scanSize) / 2),
-                width: scanSize,
-                height: scanSize,
-                downScaledWidth: 300,  // Smaller = faster processing
-                downScaledHeight: 300
-              };
-            }
+        // LOW RESOLUTION = FAST PROCESSING
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 640, max: 640 },
+            height: { ideal: 480, max: 480 }
           }
-        );
+        });
 
-        await qrScanner.start();
+        videoElement.srcObject = stream;
+        videoElement.setAttribute('playsinline', 'true');
+        await videoElement.play();
+
+        // Wait for video ready
+        await new Promise(resolve => {
+          const check = () => {
+            if (videoElement.videoWidth > 0) resolve();
+            else requestAnimationFrame(check);
+          };
+          check();
+        });
+
+        // Pre-create canvas for reuse (faster than creating each time)
+        scanCanvas = document.createElement('canvas');
+        scanCanvas.width = videoElement.videoWidth;
+        scanCanvas.height = videoElement.videoHeight;
+        scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+
         loadingOverlay.style.display = 'none';
-
-        console.log('QrScanner started successfully');
+        console.log('Camera ready:', videoElement.videoWidth, 'x', videoElement.videoHeight);
         setStatus('Ready to scan - Show your QR code', 'ready');
 
+        // Start ultra-fast scanning
+        startScanning();
+
       } catch (err) {
-        console.error('Scanner error:', err);
+        console.error('Camera error:', err);
         loadingOverlay.innerHTML = `
           <div style="font-size:48px;margin-bottom:16px">⚠️</div>
           <div style="font-size:16px;margin-bottom:8px">Camera error</div>
@@ -500,16 +496,52 @@
       }
     }
 
-    function stopScanning() {
-      if (qrScanner) {
-        qrScanner.pause();
+    function startScanning() {
+      if (scanning) return;
+      scanning = true;
+      console.log('Ultra-fast scanning started');
+
+      let pending = false; // Prevent overlapping scans
+
+      function scan() {
+        if (!scanning || isProcessing || pending) {
+          if (scanning) requestAnimationFrame(scan);
+          return;
+        }
+
+        pending = true;
+
+        // Capture frame to pre-created canvas
+        scanCtx.drawImage(videoElement, 0, 0);
+
+        // Scan using QrScanner.scanImage (we know this works)
+        QrScanner.scanImage(scanCanvas, {
+          returnDetailedScanResult: true,
+          inversionMode: 'dontInvert'
+        })
+        .then(result => {
+          if (!scanning) return;
+          scanning = false;
+          console.log('=== QR DETECTED ===');
+          console.log('Data:', result.data);
+          onScanSuccess(result.data, false);
+        })
+        .catch(() => {
+          // No QR found, continue immediately
+          pending = false;
+          if (scanning) requestAnimationFrame(scan);
+        });
       }
+
+      requestAnimationFrame(scan);
+    }
+
+    function stopScanning() {
+      scanning = false;
     }
 
     function resumeScanning() {
-      if (qrScanner) {
-        qrScanner.start();
-      }
+      startScanning();
     }
 
     // Handle successful QR scan
