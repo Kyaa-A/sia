@@ -773,49 +773,45 @@
       try {
         setStatus('Capturing...', 'processing');
 
-        // Get video element
+        // Get video element - try multiple sources
         const video = qrScanner?.$video || videoElement;
+        console.log('Video source:', video ? 'found' : 'not found');
+        console.log('Video ready state:', video?.readyState);
+        console.log('Video dimensions:', video?.videoWidth, 'x', video?.videoHeight);
+
         if (!video || !video.videoWidth) {
           showToast('Camera not ready', 'error');
           return;
         }
 
-        // Capture frame to canvas (flip horizontally to unmirror)
+        // Capture frame to canvas (normal - no flip)
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
-
-        // Flip horizontally - webcams are often mirrored
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0);
 
-        console.log('Captured frame (flipped):', canvas.width, 'x', canvas.height);
-
-        // Try scanning canvas directly
-        try {
-          const result = await QrScanner.scanImage(canvas, { returnDetailedScanResult: true });
-          console.log('=== CAPTURE SCAN DETECTED ===');
-          console.log('Data:', result.data);
-          onScanSuccess(result.data, false);
-          return;
-        } catch (e1) {
-          console.log('Canvas scan failed, trying dataURL...');
-        }
-
-        // Try with dataURL
+        // Show captured image in new window for debug
         const dataURL = canvas.toDataURL('image/png');
-        const result = await QrScanner.scanImage(dataURL, { returnDetailedScanResult: true });
-        console.log('=== CAPTURE SCAN DETECTED (dataURL) ===');
+        console.log('Captured frame:', canvas.width, 'x', canvas.height);
+        console.log('DataURL length:', dataURL.length);
+
+        // Open in new tab to verify capture
+        const debugWin = window.open('', '_blank', 'width=400,height=400');
+        debugWin.document.write('<html><body style="margin:0;background:#000"><img src="' + dataURL + '" style="max-width:100%;max-height:100%"><p style="color:#fff;text-align:center">This is what was captured. Does QR show correctly?</p></body></html>');
+
+        // Try scanning
+        const result = await QrScanner.scanImage(canvas, { returnDetailedScanResult: true });
+        console.log('=== CAPTURE SCAN DETECTED ===');
         console.log('Data:', result.data);
+        debugWin.close();
         onScanSuccess(result.data, false);
 
       } catch (err) {
         console.error('Capture scan error:', err);
         setStatus('No QR code found in frame', 'error');
-        showToast('No QR code detected. Try again.', 'error');
-        setTimeout(() => setStatus('Ready to scan - Show your QR code', 'ready'), 2000);
+        showToast('Check the popup window to see captured image', 'info');
+        setTimeout(() => setStatus('Ready to scan - Show your QR code', 'ready'), 3000);
       }
     };
 
