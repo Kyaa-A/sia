@@ -441,31 +441,40 @@
       }
     }
 
-    // qr-scanner - native continuous mode (this detected before)
+    // DUAL scanning - native mode + fast manual loop (first to detect wins)
     let qrScanner = null;
+    let fastLoopActive = false;
+    let detected = false;
 
     async function initScanner() {
       try {
+        // Method 1: Native continuous mode
         qrScanner = new QrScanner(
           videoElement,
           result => {
-            if (isProcessing) return;
-            console.log('=== QR DETECTED ===');
+            if (isProcessing || detected) return;
+            detected = true;
+            console.log('=== QR DETECTED (native) ===');
             console.log('Data:', result.data);
-            qrScanner.pause();
+            stopScanning();
             onScanSuccess(result.data, false);
           },
           {
             preferredCamera: 'environment',
             highlightScanRegion: true,
             highlightCodeOutline: true,
-            returnDetailedScanResult: true
+            returnDetailedScanResult: true,
+            maxScansPerSecond: 30
           }
         );
 
         await qrScanner.start();
         loadingOverlay.style.display = 'none';
-        console.log('qr-scanner started');
+        console.log('qr-scanner native mode started');
+
+        // Method 2: Start fast parallel loop
+        startFastLoop();
+
         setStatus('Ready to scan - Show your QR code', 'ready');
 
       } catch (err) {
@@ -480,16 +489,54 @@
       }
     }
 
+    // Fast parallel scanning loop
+    function startFastLoop() {
+      if (fastLoopActive) return;
+      fastLoopActive = true;
+      detected = false;
+      console.log('Fast parallel loop started');
+
+      async function scan() {
+        if (!fastLoopActive || isProcessing || detected) return;
+
+        try {
+          const result = await QrScanner.scanImage(videoElement, {
+            returnDetailedScanResult: true
+          });
+
+          if (!detected && !isProcessing) {
+            detected = true;
+            console.log('=== QR DETECTED (fast loop) ===');
+            console.log('Data:', result.data);
+            stopScanning();
+            onScanSuccess(result.data, false);
+            return;
+          }
+        } catch (e) {
+          // No QR found, continue
+        }
+
+        if (fastLoopActive && !detected) {
+          requestAnimationFrame(scan);
+        }
+      }
+
+      requestAnimationFrame(scan);
+    }
+
     function stopScanning() {
+      fastLoopActive = false;
       if (qrScanner) {
         try { qrScanner.pause(); } catch(e) {}
       }
     }
 
     function resumeScanning() {
+      detected = false;
       if (qrScanner) {
         try { qrScanner.start(); } catch(e) {}
       }
+      startFastLoop();
     }
 
     // Handle successful QR scan
