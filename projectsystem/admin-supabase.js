@@ -1729,10 +1729,15 @@
 
     const name = document.getElementById('empName').value.trim();
     const role = document.getElementById('empRole').value.trim();
-    const salary = parseFloat(document.getElementById('empSalary').value) || 510; // Daily rate
-    const sss = parseFloat(document.getElementById('empSSS').value) || 300;
-    const philhealth = parseFloat(document.getElementById('empPhilhealth').value) || 250;
-    const pagibig = parseFloat(document.getElementById('empPagibig').value) || 200;
+    // Allow 0 as valid value (don't use || which treats 0 as falsy)
+    const salaryInput = parseFloat(document.getElementById('empSalary').value);
+    const salary = !isNaN(salaryInput) ? salaryInput : 510; // Daily rate
+    const sssInput = parseFloat(document.getElementById('empSSS').value);
+    const sss = !isNaN(sssInput) ? sssInput : 300;
+    const philhealthInput = parseFloat(document.getElementById('empPhilhealth').value);
+    const philhealth = !isNaN(philhealthInput) ? philhealthInput : 250;
+    const pagibigInput = parseFloat(document.getElementById('empPagibig').value);
+    const pagibig = !isNaN(pagibigInput) ? pagibigInput : 200;
 
     // Validate required fields
     if (!name) {
