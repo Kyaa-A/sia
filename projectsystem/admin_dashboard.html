@@ -624,6 +624,20 @@
     </div>
   </div>
 
+  <!-- Attendance Review Modal (for payslip approval) -->
+  <div id="attendanceReviewModal" class="modal-backdrop" role="dialog" aria-hidden="true" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal" style="max-width:700px;width:95%">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0" id="attendanceReviewTitle">Attendance Review</h3>
+        <button onclick="document.getElementById('attendanceReviewModal').style.display='none'" class="secondary" style="padding:6px 12px">Close</button>
+      </div>
+      <div id="attendanceReviewInfo" style="background:#f3f4f6;padding:12px;border-radius:8px;margin-bottom:16px"></div>
+      <div id="attendanceReviewContent" style="max-height:300px;overflow-y:auto"></div>
+      <div id="attendanceReviewSummary" style="background:#1e3a5f;color:#fff;padding:16px;border-radius:8px;margin-top:16px"></div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end" id="attendanceReviewActions"></div>
+    </div>
+  </div>
+
   <!-- Employee QR Code Modal -->
   <div id="qrCodeModal" class="modal-backdrop" role="dialog" aria-hidden="true" style="display:none" onclick="if(event.target===this)this.style.display='none'">
     <div class="modal" style="max-width:400px;width:95%;text-align:center">

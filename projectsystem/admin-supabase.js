@@ -556,9 +556,10 @@
           </td>
           <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:center">
             ${slip.status === 'Pending' ? `
+              <button onclick="reviewAttendanceForPayslip('${slip.id}')" style="background:#3b82f6;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;margin-right:4px">Review</button>
               <button onclick="approvePayslip('${slip.id}')" style="background:#10b981;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;margin-right:4px">Approve</button>
               <button onclick="rejectPayslip('${slip.id}')" style="background:#ef4444;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">Reject</button>
-            ` : '—'}
+            ` : `<button onclick="reviewAttendanceForPayslip('${slip.id}')" style="background:#6b7280;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">View</button>`}
           </td>
         </tr>
       `;
@@ -595,6 +596,190 @@
       console.error('Error rejecting payslip:', err);
       if (window.toastError) toastError('Error', err.message || 'Failed to reject payslip');
     }
+  };
+
+  // Review attendance before approving payslip
+  let currentReviewPayslipId = null;
+
+  window.reviewAttendanceForPayslip = async function(payslipId) {
+    const payslip = payslips.find(p => p.id === payslipId);
+    if (!payslip) {
+      toastError('Payslip not found');
+      return;
+    }
+
+    currentReviewPayslipId = payslipId;
+    const emp = employees.find(e => e.id === payslip.employee_id) || payslip.employees || {};
+    const weekStart = payslip.week_start;
+    const weekEnd = payslip.week_end;
+
+    // Show modal
+    const modal = document.getElementById('attendanceReviewModal');
+    const title = document.getElementById('attendanceReviewTitle');
+    const info = document.getElementById('attendanceReviewInfo');
+    const content = document.getElementById('attendanceReviewContent');
+    const summary = document.getElementById('attendanceReviewSummary');
+    const actions = document.getElementById('attendanceReviewActions');
+
+    if (!modal) return;
+
+    title.textContent = `Attendance Review - ${emp.name || payslip.employee_id}`;
+    info.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+        <div><span style="color:#6b7280;font-size:12px">Employee</span><br><strong>${emp.name || 'Unknown'}</strong></div>
+        <div><span style="color:#6b7280;font-size:12px">Employee ID</span><br><strong>${payslip.employee_id}</strong></div>
+        <div><span style="color:#6b7280;font-size:12px">Week Period</span><br><strong>${weekStart} to ${weekEnd}</strong></div>
+        <div><span style="color:#6b7280;font-size:12px">Status</span><br><strong style="color:${payslip.status === 'Approved' ? '#10b981' : payslip.status === 'Rejected' ? '#ef4444' : '#f59e0b'}">${payslip.status || 'Pending'}</strong></div>
+      </div>
+    `;
+    content.innerHTML = '<div style="text-align:center;padding:20px;color:#6b7280">Loading attendance records...</div>';
+    modal.style.display = 'flex';
+
+    try {
+      // Fetch attendance for this employee and week
+      const { data: attendanceData, error } = await supabaseClient
+        .from('attendance')
+        .select('*')
+        .eq('employee_id', payslip.employee_id)
+        .gte('date', weekStart)
+        .lte('date', weekEnd)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+
+      const attendanceRecords = attendanceData || [];
+
+      if (attendanceRecords.length === 0) {
+        content.innerHTML = `
+          <div style="text-align:center;padding:30px;color:#6b7280;background:#fef3c7;border-radius:8px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <p style="margin:0;font-weight:600;color:#92400e">No attendance records found for this week</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#a16207">This employee has no clock-in/out entries for ${weekStart} to ${weekEnd}</p>
+          </div>
+        `;
+      } else {
+        // Build attendance table
+        let tableHTML = `
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            <thead>
+              <tr style="background:#f3f4f6">
+                <th style="padding:10px;text-align:left;border-bottom:2px solid #e5e7eb">Date</th>
+                <th style="padding:10px;text-align:center;border-bottom:2px solid #e5e7eb">Time In</th>
+                <th style="padding:10px;text-align:center;border-bottom:2px solid #e5e7eb">Time Out</th>
+                <th style="padding:10px;text-align:right;border-bottom:2px solid #e5e7eb">Hours</th>
+                <th style="padding:10px;text-align:right;border-bottom:2px solid #e5e7eb">Late</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        let totalHours = 0;
+        let totalLate = 0;
+
+        attendanceRecords.forEach(record => {
+          const date = new Date(record.date);
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const hours = Number(record.hours_worked) || 0;
+          const late = Number(record.late_minutes) || 0;
+          totalHours += hours;
+          totalLate += late;
+
+          const lateDisplay = late > 0 ? `${Math.floor(late/60)}h ${late%60}m` : '—';
+          const lateColor = late > 0 ? '#ef4444' : '#6b7280';
+
+          tableHTML += `
+            <tr>
+              <td style="padding:10px;border-bottom:1px solid #e5e7eb"><strong>${dayName}</strong> ${dateStr}</td>
+              <td style="padding:10px;text-align:center;border-bottom:1px solid #e5e7eb">${record.time_in || '—'}</td>
+              <td style="padding:10px;text-align:center;border-bottom:1px solid #e5e7eb">${record.time_out || '—'}</td>
+              <td style="padding:10px;text-align:right;border-bottom:1px solid #e5e7eb;font-weight:600">${hours.toFixed(1)}h</td>
+              <td style="padding:10px;text-align:right;border-bottom:1px solid #e5e7eb;color:${lateColor}">${lateDisplay}</td>
+            </tr>
+          `;
+        });
+
+        tableHTML += '</tbody></table>';
+        content.innerHTML = tableHTML;
+      }
+
+      // Summary section
+      const gross = Number(payslip.gross_pay) || 0;
+      const net = Number(payslip.net_pay) || 0;
+      const sss = Number(payslip.sss) || 0;
+      const philhealth = Number(payslip.philhealth) || 0;
+      const pagibig = Number(payslip.pagibig) || 0;
+      const lateDeduction = Number(payslip.late_deduction) || 0;
+      const totalDeductions = sss + philhealth + pagibig + lateDeduction;
+
+      summary.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-size:12px;opacity:0.8">Worked Hours</div>
+            <div style="font-size:18px;font-weight:600">${payslip.worked_hours || 0}h</div>
+          </div>
+          <div>
+            <div style="font-size:12px;opacity:0.8">Late Minutes</div>
+            <div style="font-size:18px;font-weight:600">${payslip.late_minutes || 0}m</div>
+          </div>
+          <div>
+            <div style="font-size:12px;opacity:0.8">Gross Pay</div>
+            <div style="font-size:18px;font-weight:600">₱${gross.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+          </div>
+          <div>
+            <div style="font-size:12px;opacity:0.8">Total Deductions</div>
+            <div style="font-size:18px;font-weight:600;color:#fca5a5">-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,0.3);margin-top:16px;padding-top:16px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:16px">NET PAY</span>
+          <span style="font-size:24px;font-weight:700;color:#10b981">₱${net.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+        </div>
+      `;
+
+      // Actions based on status
+      if (payslip.status === 'Pending') {
+        actions.innerHTML = `
+          <button onclick="downloadPayslipFromReview()" style="background:#6b7280;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600">Download Receipt</button>
+          <button onclick="approveFromReview()" style="background:#10b981;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600">Approve Payslip</button>
+          <button onclick="rejectFromReview()" style="background:#ef4444;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600">Reject</button>
+        `;
+      } else {
+        actions.innerHTML = `
+          <button onclick="downloadPayslipFromReview()" style="background:#10b981;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600">Download Receipt</button>
+        `;
+      }
+
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+      content.innerHTML = `<div style="text-align:center;padding:20px;color:#ef4444">Failed to load attendance records</div>`;
+    }
+  };
+
+  // Approve from review modal
+  window.approveFromReview = async function() {
+    if (!currentReviewPayslipId) return;
+    await approvePayslip(currentReviewPayslipId);
+    document.getElementById('attendanceReviewModal').style.display = 'none';
+  };
+
+  // Reject from review modal
+  window.rejectFromReview = async function() {
+    if (!currentReviewPayslipId) return;
+    await rejectPayslip(currentReviewPayslipId);
+    document.getElementById('attendanceReviewModal').style.display = 'none';
+  };
+
+  // Download payslip from review modal
+  window.downloadPayslipFromReview = function() {
+    if (!currentReviewPayslipId) return;
+    const payslip = payslips.find(p => p.id === currentReviewPayslipId);
+    if (!payslip) return;
+
+    const emp = employees.find(e => e.id === payslip.employee_id) || payslip.employees || {};
+    currentViewPayslip = payslip;
+    currentViewEmployee = emp;
+    downloadPayslipReceipt();
   };
 
   // =============================================
