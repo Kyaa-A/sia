@@ -471,8 +471,7 @@
         await qrScanner.start();
         loadingOverlay.style.display = 'none';
 
-        console.log('QrScanner started');
-        console.log('Camera:', await qrScanner.hasCamera());
+        console.log('QrScanner started successfully');
         setStatus('Ready to scan - Show your QR code', 'ready');
 
       } catch (err) {
