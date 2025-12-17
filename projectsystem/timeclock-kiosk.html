@@ -780,21 +780,34 @@
           return;
         }
 
-        // Capture frame to canvas
+        // Capture frame to canvas (flip horizontally to unmirror)
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
+
+        // Flip horizontally - webcams are often mirrored
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0);
 
-        // Convert to blob
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        console.log('Captured frame (flipped):', canvas.width, 'x', canvas.height);
 
-        console.log('Captured frame:', canvas.width, 'x', canvas.height);
+        // Try scanning canvas directly
+        try {
+          const result = await QrScanner.scanImage(canvas, { returnDetailedScanResult: true });
+          console.log('=== CAPTURE SCAN DETECTED ===');
+          console.log('Data:', result.data);
+          onScanSuccess(result.data, false);
+          return;
+        } catch (e1) {
+          console.log('Canvas scan failed, trying dataURL...');
+        }
 
-        // Scan using QrScanner.scanImage
-        const result = await QrScanner.scanImage(blob, { returnDetailedScanResult: true });
-        console.log('=== CAPTURE SCAN DETECTED ===');
+        // Try with dataURL
+        const dataURL = canvas.toDataURL('image/png');
+        const result = await QrScanner.scanImage(dataURL, { returnDetailedScanResult: true });
+        console.log('=== CAPTURE SCAN DETECTED (dataURL) ===');
         console.log('Data:', result.data);
         onScanSuccess(result.data, false);
 
