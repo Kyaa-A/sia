@@ -469,16 +469,15 @@
           check();
         });
 
-        // Canvas for CENTER REGION only (faster + focused on QR area)
-        const size = Math.min(videoElement.videoWidth, videoElement.videoHeight) * 0.7;
+        // Scan FULL frame but scale down for faster processing
         scanCanvas = document.createElement('canvas');
-        scanCanvas.width = size;
-        scanCanvas.height = size;
+        scanCanvas.width = 400;  // Fixed small size for fast processing
+        scanCanvas.height = 300;
         scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
 
         loadingOverlay.style.display = 'none';
         console.log('Camera:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-        console.log('Scan region:', size, 'x', size);
+        console.log('Scan canvas: 400 x 300');
         setStatus('Ready to scan - Show your QR code', 'ready');
 
         startScanning();
@@ -508,18 +507,11 @@
           return;
         }
 
-        // Calculate center crop region
-        const vw = videoElement.videoWidth;
-        const vh = videoElement.videoHeight;
-        const size = scanCanvas.width;
-        const sx = (vw - size) / 2;
-        const sy = (vh - size) / 2;
-
-        // Draw CENTER region only
-        scanCtx.drawImage(videoElement, sx, sy, size, size, 0, 0, size, size);
+        // Draw FULL frame scaled down (captures entire view for better detection)
+        scanCtx.drawImage(videoElement, 0, 0, scanCanvas.width, scanCanvas.height);
 
         // Get image data
-        const imageData = scanCtx.getImageData(0, 0, size, size);
+        const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
 
         // jsQR - try both normal and inverted
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
@@ -645,6 +637,9 @@
           return;
         }
 
+        // HIDE camera container to make buttons more visible
+        document.getElementById('scannerContainer').style.display = 'none';
+
         // Show result card and buttons
         resultCard.classList.add('show');
         actionButtons.style.display = 'block';
@@ -767,6 +762,9 @@
       photoPreview.classList.remove('show');
       confirmBtn.disabled = false;
       cancelBtn.disabled = false;
+
+      // SHOW camera container again
+      document.getElementById('scannerContainer').style.display = 'block';
 
       setStatus('Ready to scan - Show your QR code', 'ready');
 
