@@ -65,6 +65,7 @@
       object-fit: cover;
       width: 100%;
       height: 100%;
+      transform: scaleX(-1); /* Flip video to unmirror for QR reading */
     }
     .scanner-overlay {
       position: absolute;
@@ -443,24 +444,42 @@
     // Initialize QR Scanner
     async function initScanner() {
       try {
-        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode = new Html5Qrcode("reader", {
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
+        });
 
         const config = {
-          fps: 15,
+          fps: 10,
           qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
+          aspectRatio: 1.0,
+          disableFlip: false // Allow mirrored QR detection
         };
 
-        // Use default camera (environment = back camera on phones, any available on desktop)
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          (decodedText) => {
-            console.log('DETECTED:', decodedText);
-            onScanSuccess(decodedText, false);
-          },
-          onScanFailure
-        );
+        // Try back camera first, fallback to front camera
+        try {
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+              console.log('DETECTED:', decodedText);
+              onScanSuccess(decodedText, false);
+            },
+            onScanFailure
+          );
+        } catch (backCamErr) {
+          console.log('Back camera failed, trying front camera');
+          await html5QrCode.start(
+            { facingMode: "user" },
+            config,
+            (decodedText) => {
+              console.log('DETECTED:', decodedText);
+              onScanSuccess(decodedText, false);
+            },
+            onScanFailure
+          );
+        }
 
         setStatus('Ready to scan - Show your QR code', 'ready');
       } catch (err) {
