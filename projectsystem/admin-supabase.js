@@ -1032,12 +1032,12 @@
     // Populate month dropdown (last 6 months)
     if (monthSelect) {
       monthSelect.innerHTML = '';
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
       const now = new Date();
       for (let i = 0; i < 6; i++) {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthStart = date.toISOString().split('T')[0];
-        const label = `${months[date.getMonth()]} ${date.getFullYear()}`;
+        const monthStart = formatDateLocal(date); // Use local timezone
+        const label = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
         const isCurrent = i === 0 ? ' (Current)' : '';
         monthSelect.innerHTML += `<option value="${monthStart}">${label}${isCurrent}</option>`;
       }
@@ -1081,37 +1081,47 @@
     }
   }
 
+  // Helper to format date as YYYY-MM-DD in local timezone (avoids UTC conversion issues)
+  function formatDateLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   function getPayrollWeekStart(offsetWeeks = 0) {
     const now = new Date();
     const day = now.getDay();
     const diff = day === 0 ? -6 : 1 - day; // Monday
     const monday = new Date(now);
     monday.setDate(now.getDate() + diff + (offsetWeeks * 7));
-    return monday.toISOString().split('T')[0];
+    return formatDateLocal(monday);
   }
 
   function getPayrollWeekEnd(weekStart) {
-    const d = new Date(weekStart + 'T00:00:00');
+    const [year, month, day] = weekStart.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
     d.setDate(d.getDate() + 6); // Sunday
-    return d.toISOString().split('T')[0];
+    return formatDateLocal(d);
   }
 
   function formatPayrollWeek(start, end) {
-    const startDate = new Date(start + 'T00:00:00');
-    const endDate = new Date(end + 'T00:00:00');
+    const [sy, sm, sd] = start.split('-').map(Number);
+    const [ey, em, ed] = end.split('-').map(Number);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${months[startDate.getMonth()]} ${startDate.getDate()} - ${months[endDate.getMonth()]} ${endDate.getDate()}`;
+    return `${months[sm - 1]} ${sd} - ${months[em - 1]} ${ed}`;
   }
 
   function getMonthEnd(monthStart) {
-    const d = new Date(monthStart + 'T00:00:00');
-    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    return lastDay.toISOString().split('T')[0];
+    const [year, month] = monthStart.split('-').map(Number);
+    const lastDay = new Date(year, month, 0); // Day 0 of next month = last day of current month
+    return formatDateLocal(lastDay);
   }
 
   function getWorkingDaysInMonth(monthStart) {
-    const start = new Date(monthStart + 'T00:00:00');
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    const [year, month] = monthStart.split('-').map(Number);
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 0);
     let count = 0;
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const day = d.getDay();
