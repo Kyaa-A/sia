@@ -291,7 +291,9 @@
 
   <div class="container">
     <div class="scanner-container" id="scannerContainer" style="border:3px solid #10b981;border-radius:12px;position:relative;overflow:hidden">
-      <video id="videoElement" style="width:100%;height:100%;object-fit:cover"></video>
+      <!-- html5-qrcode renders here -->
+      <div id="reader" style="width:100%;height:100%"></div>
+      <video id="videoElement" style="display:none"></video>
       <div id="loadingOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;background:rgba(0,0,0,0.8);z-index:10">
         <div style="font-size:48px;margin-bottom:16px">📷</div>
         <div style="font-size:16px;margin-bottom:8px">Initializing Camera...</div>
@@ -371,8 +373,8 @@
   <script src="supabase-config.js"></script>
   <script src="supabase-db.js"></script>
 
-  <!-- jsQR - synchronous, no web worker delay -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <!-- html5-qrcode - robust web QR scanner with multiple detection engines -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <script>
   (function() {
@@ -441,114 +443,63 @@
       }
     }
 
-    // ULTRA-FAST scanning with jsQR
-    let scanning = false;
-    let scanCanvas = null;
-    let scanCtx = null;
-    let frameCount = 0;
-    let lastFpsTime = 0;
+    // html5-qrcode scanner - robust, handles phone screens well
+    let html5QrCode = null;
 
     async function initScanner() {
       try {
-        // Higher resolution for better QR detection
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+        html5QrCode = new Html5Qrcode("reader");
+
+        const config = {
+          fps: 30,  // High frame rate
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          disableFlip: false,
+          // Use native BarcodeDetector if available (fastest)
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
           }
-        });
+        };
 
-        videoElement.srcObject = stream;
-        videoElement.setAttribute('playsinline', 'true');
-        await videoElement.play();
-
-        // Wait for video
-        await new Promise(resolve => {
-          const check = () => videoElement.videoWidth > 0 ? resolve() : requestAnimationFrame(check);
-          check();
-        });
-
-        // Scan FULL frame but scale down for faster processing
-        scanCanvas = document.createElement('canvas');
-        scanCanvas.width = 400;  // Fixed small size for fast processing
-        scanCanvas.height = 300;
-        scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            // QR detected!
+            console.log('=== QR DETECTED ===');
+            console.log('Data:', decodedText);
+            html5QrCode.pause(true);
+            onScanSuccess(decodedText, false);
+          },
+          () => {} // Ignore scan failures
+        );
 
         loadingOverlay.style.display = 'none';
-        console.log('Camera:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-        console.log('Scan canvas: 400 x 300');
+        console.log('html5-qrcode scanner started');
         setStatus('Ready to scan - Show your QR code', 'ready');
 
-        startScanning();
-
       } catch (err) {
-        console.error('Camera error:', err);
+        console.error('Scanner error:', err);
         loadingOverlay.innerHTML = `
           <div style="font-size:48px;margin-bottom:16px">⚠️</div>
           <div style="font-size:16px;margin-bottom:8px">Camera error</div>
-          <div style="font-size:12px;opacity:0.7">${err.message}</div>
+          <div style="font-size:12px;opacity:0.7">${err.message || err}</div>
         `;
         setStatus('Camera not available', 'error');
         startScanBtn.style.display = 'block';
       }
     }
 
-    function startScanning() {
-      if (scanning) return;
-      scanning = true;
-      frameCount = 0;
-      lastFpsTime = performance.now();
-      console.log('jsQR scanning started...');
-
-      function scan() {
-        if (!scanning || isProcessing) {
-          if (scanning) requestAnimationFrame(scan);
-          return;
-        }
-
-        // Draw FULL frame scaled down (captures entire view for better detection)
-        scanCtx.drawImage(videoElement, 0, 0, scanCanvas.width, scanCanvas.height);
-
-        // Get image data
-        const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-
-        // jsQR - try both normal and inverted
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'attemptBoth'
-        });
-
-        frameCount++;
-
-        // Log FPS every 2 seconds
-        const now = performance.now();
-        if (now - lastFpsTime > 2000) {
-          const fps = Math.round(frameCount / ((now - lastFpsTime) / 1000));
-          console.log('Scanning at', fps, 'FPS');
-          frameCount = 0;
-          lastFpsTime = now;
-        }
-
-        if (code) {
-          scanning = false;
-          console.log('=== QR DETECTED ===');
-          console.log('Data:', code.data);
-          onScanSuccess(code.data, false);
-          return;
-        }
-
-        requestAnimationFrame(scan);
-      }
-
-      requestAnimationFrame(scan);
-    }
-
     function stopScanning() {
-      scanning = false;
+      if (html5QrCode) {
+        try { html5QrCode.pause(true); } catch(e) {}
+      }
     }
 
     function resumeScanning() {
-      startScanning();
+      if (html5QrCode) {
+        try { html5QrCode.resume(); } catch(e) {}
+      }
     }
 
     // Handle successful QR scan
@@ -782,7 +733,7 @@
     confirmBtn.addEventListener('click', confirmAction);
     cancelBtn.addEventListener('click', cancelAction);
 
-    // Scan QR from uploaded file using jsQR
+    // Scan QR from uploaded file using html5-qrcode
     window.scanQRFromFile = async function() {
       const fileInput = document.getElementById('qrFileInput');
       if (!fileInput.files || !fileInput.files[0]) return;
@@ -791,33 +742,9 @@
       setStatus('Scanning image...', 'processing');
 
       try {
-        // Load image
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-        });
-
-        // Draw to canvas
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-
-        // Scan with jsQR
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-        URL.revokeObjectURL(img.src);
-
-        if (code) {
-          console.log('File scan result:', code.data);
-          onScanSuccess(code.data, true);
-        } else {
-          throw new Error('No QR code found');
-        }
+        const result = await Html5Qrcode.scanFile(file, true);
+        console.log('File scan result:', result);
+        onScanSuccess(result, true);
       } catch (err) {
         console.error('File scan error:', err);
         setStatus('Could not read QR from image', 'error');
@@ -846,22 +773,9 @@
       if (input) input.value = '';
     };
 
-    // Manual scan trigger
+    // Manual scan trigger - not needed with html5-qrcode
     window.captureAndScan = function() {
-      if (!scanCanvas || !scanCtx) {
-        showToast('Scanner not ready', 'error');
-        return;
-      }
-      scanCtx.drawImage(videoElement, 0, 0);
-      const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
-      if (code) {
-        console.log('Manual scan:', code.data);
-        stopScanning();
-        onScanSuccess(code.data, false);
-      } else {
-        showToast('No QR found in current frame', 'error');
-      }
+      showToast('Scanner is running automatically', 'info');
     };
 
     // Initialize
