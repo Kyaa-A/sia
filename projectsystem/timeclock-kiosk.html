@@ -373,6 +373,10 @@
 
   <!-- QR Scanner Library - same as your working project -->
   <script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+  <script>
+    // Set worker path for qr-scanner (local file to avoid CORS)
+    QrScanner.WORKER_PATH = './qr-scanner-worker.min.js';
+  </script>
 
   <script>
   (function() {
@@ -458,16 +462,7 @@
             highlightScanRegion: true,
             highlightCodeOutline: true,
             returnDetailedScanResult: true,
-            maxScansPerSecond: 25, // Scan more frequently
-            // Scan the entire frame, not just center region
-            calculateScanRegion: (video) => {
-              return {
-                x: 0,
-                y: 0,
-                width: video.videoWidth,
-                height: video.videoHeight
-              };
-            }
+            maxScansPerSecond: 25 // Scan more frequently
           }
         );
 
