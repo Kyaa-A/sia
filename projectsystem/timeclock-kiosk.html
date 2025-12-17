@@ -448,6 +448,25 @@
 
     async function initScanner() {
       try {
+        // First get camera with optimal PC webcam settings
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 60, min: 30 },  // Request high frame rate
+            focusMode: { ideal: 'continuous' },  // Keep focus adjusting
+            exposureMode: { ideal: 'continuous' }
+          }
+        });
+        videoElement.srcObject = stream;
+        videoElement.setAttribute('playsinline', 'true');
+        await videoElement.play();
+
+        // Log actual camera settings
+        const track = stream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        console.log('Camera settings:', settings.width + 'x' + settings.height, '@', settings.frameRate + 'fps');
+
         // Method 1: Native continuous mode
         qrScanner = new QrScanner(
           videoElement,
@@ -460,17 +479,16 @@
             onScanSuccess(result.data, false);
           },
           {
-            preferredCamera: 'environment',
-            highlightScanRegion: true,
-            highlightCodeOutline: true,
             returnDetailedScanResult: true,
-            maxScansPerSecond: 30
+            maxScansPerSecond: 60,  // Maximum scan rate
+            highlightScanRegion: true,
+            highlightCodeOutline: true
           }
         );
 
         await qrScanner.start();
         loadingOverlay.style.display = 'none';
-        console.log('qr-scanner native mode started');
+        console.log('qr-scanner started at max speed');
 
         // Method 2: Start fast parallel loop
         startFastLoop();
