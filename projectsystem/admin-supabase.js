@@ -1978,6 +1978,7 @@
     // Create new image from QR
     const qrImg = new Image();
     qrImg.crossOrigin = 'anonymous';
+
     qrImg.onload = function() {
       createDownloadImage(qrImg);
     };
@@ -1989,12 +1990,8 @@
         if (window.toastError) toastError('Error', 'Failed to load QR image');
       }
     };
-    qrImg.src = qrSrc;
 
-    // If image already loaded (cached)
-    if (qrImg.complete && qrImg.naturalWidth > 0) {
-      createDownloadImage(qrImg);
-    }
+    qrImg.src = qrSrc;
   };
 
 
