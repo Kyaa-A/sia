@@ -488,7 +488,7 @@
 
         // Start scanning loop
         scanningActive = true;
-        requestAnimationFrame(scanFrame);
+        startScanning();
 
       } catch (err) {
         console.error('Scanner init error:', err);
@@ -514,22 +514,22 @@
       }
     }
 
-    // Scan frame using BarcodeDetector (native) or jsQR (fallback)
+    // Scanning interval
+    let scanInterval = null;
     let frameCount = 0;
-    async function scanFrame() {
-      if (!scanningActive || isProcessing) {
-        if (scanningActive) requestAnimationFrame(scanFrame);
-        return;
-      }
 
-      if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+    function startScanning() {
+      if (scanInterval) return;
+
+      scanInterval = setInterval(async () => {
+        if (!scanningActive || isProcessing) return;
+        if (videoElement.readyState !== videoElement.HAVE_ENOUGH_DATA) return;
+
         frameCount++;
 
-        let detected = false;
-
-        // Try native BarcodeDetector first (much more reliable)
-        if (barcodeDetector) {
-          try {
+        try {
+          // Try native BarcodeDetector first
+          if (barcodeDetector) {
             const barcodes = await barcodeDetector.detect(videoElement);
             if (barcodes.length > 0) {
               console.log('=== QR DETECTED (native) ===');
@@ -537,33 +537,17 @@
               onScanSuccess(barcodes[0].rawValue, false);
               return;
             }
-          } catch (e) {
-            // Fallback to jsQR on error
           }
-        }
 
-        // Fallback to jsQR
-        if (!detected) {
-          // Draw video frame to canvas
-          scanCtx.drawImage(videoElement, 0, 0, scanCanvas.width, scanCanvas.height);
-          let imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+          // Fallback to jsQR - draw to canvas first
+          scanCanvas.width = videoElement.videoWidth;
+          scanCanvas.height = videoElement.videoHeight;
+          scanCtx.drawImage(videoElement, 0, 0);
+          const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
 
-          // Try normal orientation
           let code = jsQR(imageData.data, imageData.width, imageData.height, {
             inversionAttempts: 'attemptBoth'
           });
-
-          // Try flipped if not found
-          if (!code) {
-            scanCtx.save();
-            scanCtx.scale(-1, 1);
-            scanCtx.drawImage(videoElement, -scanCanvas.width, 0, scanCanvas.width, scanCanvas.height);
-            scanCtx.restore();
-            imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-            code = jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: 'attemptBoth'
-            });
-          }
 
           if (code) {
             console.log('=== QR DETECTED (jsQR) ===');
@@ -571,15 +555,22 @@
             onScanSuccess(code.data, false);
             return;
           }
-        }
 
-        // Log every 60 frames (~2 sec)
-        if (frameCount % 60 === 0) {
-          console.log('Scanning... frame', frameCount, barcodeDetector ? '(native+jsQR)' : '(jsQR only)');
+          // Log every 30 scans (~3 sec)
+          if (frameCount % 30 === 0) {
+            console.log('Scanning...', frameCount, 'canvas:', scanCanvas.width + 'x' + scanCanvas.height);
+          }
+        } catch (err) {
+          console.error('Scan error:', err);
         }
+      }, 100); // Scan every 100ms (10 times per second)
+    }
+
+    function stopScanning() {
+      if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
       }
-
-      requestAnimationFrame(scanFrame);
     }
 
     // Handle successful QR scan
@@ -681,6 +672,7 @@
 
         // Pause scanner while confirming
         scanningActive = false;
+        stopScanning();
 
       } catch (err) {
         console.error('Scan processing error:', err);
@@ -796,7 +788,7 @@
       // Resume scanner
       if (videoStream) {
         scanningActive = true;
-        requestAnimationFrame(scanFrame);
+        startScanning();
       }
     }
 
