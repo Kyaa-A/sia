@@ -225,9 +225,9 @@
     <div id="employees" class="section-content">
       <div class="card section">
         <div style="overflow:auto;max-height:600px;padding:12px;background:#fff;border-radius:8px;border:1px solid #eef2f7">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
             <button id="addEmployeeBtn" style="padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:500">+ Add Employee</button>
-            <input id="search" class="search" placeholder="Search by name, role, or id" style="width:340px;padding:8px" />
+            <input id="search" class="search" placeholder="Search by name, role, or id" style="flex:1;min-width:200px;max-width:340px;padding:8px" />
           </div>
           <table id="employeesTable">
             <thead>
@@ -299,7 +299,7 @@
       <div class="card section">
         <h2>Salary Slips</h2>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-          <input id="salarySlipsSearch" type="text" placeholder="Search by name or ID..." style="padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;width:280px" />
+          <input id="salarySlipsSearch" type="text" placeholder="Search by name or ID..." style="padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;width:100%;max-width:280px" />
           <div style="display:flex;align-items:center;gap:8px">
             <span id="salarySlipsInfo" style="color:#6b7280;font-size:13px"></span>
             <button id="salarySlipsPrev" class="secondary" style="padding:6px 12px">◀ Prev</button>

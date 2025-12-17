@@ -584,7 +584,7 @@ input[type=text]:focus, input[type=number]:focus, input[type=email]:focus, input
     top:0;
     left:0;
     height:100vh;
-    width:280px;
+    width:min(280px, 80vw);
     z-index:100;
     transform:translateX(-100%);
     transition:transform 0.3s ease;
@@ -623,6 +623,15 @@ input[type=text]:focus, input[type=number]:focus, input[type=email]:focus, input
     box-shadow:0 4px 12px rgba(30,58,95,0.3);
   }
   .mobile-menu-toggle svg{width:24px;height:24px;}
+}
+
+/* Medium-small devices (600px) */
+@media(max-width:600px){
+  .sidebar{width:min(260px, 75vw);}
+  .stats{grid-template-columns:repeat(2, 1fr);gap:10px;}
+  .layout{gap:12px;}
+  header h1{font-size:18px;}
+  .section h2{font-size:16px;}
 }
 
 /* Attendance pagination buttons styling */
@@ -760,7 +769,10 @@ input[type=text]:focus, input[type=number]:focus, input[type=email]:focus, input
 }
 
 @media (max-width: 480px){
-  .sidebar{padding:12px;}
+  .sidebar{
+    width:min(240px, 70vw);
+    padding:12px;
+  }
   .sidebar-header h2{font-size:16px;padding-bottom:10px;}
   .admin-avatar{width:36px;height:36px;font-size:16px;}
   .admin-name{font-size:12px;}
@@ -780,7 +792,19 @@ input[type=text]:focus, input[type=number]:focus, input[type=email]:focus, input
 
   .stats{
     grid-template-columns: repeat(2, 1fr);
+    gap:8px;
   }
+}
+
+/* Very small devices (360px and below) */
+@media (max-width: 360px){
+  .sidebar{width:min(220px, 65vw);}
+  .stats{grid-template-columns:1fr;}
+  .dashboard>div:not(header){padding:10px;padding-top:60px;}
+  header{padding:10px;padding-top:60px;}
+  .mobile-menu-toggle{top:12px;left:12px;width:40px;height:40px;}
+  table{font-size:10px;}
+  th,td{padding:4px 3px;}
 }
 
 /* Ensure all section cards are responsive */

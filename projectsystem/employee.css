@@ -513,7 +513,7 @@ select {
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
-    width: 280px;
+    width: min(280px, 80vw);
   }
 
   .sidebar.open {
@@ -541,7 +541,8 @@ select {
 
   .layout {
     padding: 16px;
-    padding-top: 70px; /* Space for mobile menu button */
+    padding-top: 70px;
+    grid-template-columns: 1fr;
   }
 
   .card {
@@ -581,10 +582,35 @@ select {
     width: 24px;
     height: 24px;
   }
+
+  /* Modal responsive */
+  .modal {
+    max-width: calc(100vw - 24px);
+    margin: 12px;
+  }
+}
+
+/* Medium-small devices (600px) */
+@media (max-width: 600px) {
+  .sidebar {
+    width: min(260px, 75vw);
+  }
+
+  .layout {
+    gap: 12px;
+  }
+
+  .section h2 {
+    font-size: 15px;
+  }
 }
 
 /* Small Mobile */
 @media (max-width: 480px) {
+  .sidebar {
+    width: min(240px, 70vw);
+  }
+
   .layout {
     padding: 12px;
     padding-top: 66px;
@@ -638,6 +664,34 @@ select {
     width: 40px;
     height: 40px;
     font-size: 16px;
+  }
+}
+
+/* Very small devices (360px and below) */
+@media (max-width: 360px) {
+  .sidebar {
+    width: min(220px, 65vw);
+  }
+
+  .layout {
+    padding: 10px;
+    padding-top: 60px;
+  }
+
+  .mobile-menu-toggle {
+    top: 12px;
+    left: 12px;
+    width: 40px;
+    height: 40px;
+  }
+
+  th, td {
+    padding: 6px 4px;
+    font-size: 11px;
+  }
+
+  .card {
+    padding: 12px;
   }
 }
 
