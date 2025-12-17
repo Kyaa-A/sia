@@ -287,13 +287,15 @@ const db = {
     const now = new Date();
     const today = formatDateLocal(now);
 
-    // Check if already timed in today
+    // Check if already timed in today (First In, Last Out rule)
     const existing = await this.getTodayAttendance(employeeId);
     if (existing && existing.time_in) {
-      throw new Error('Already timed in today');
+      // Already timed in - preserve first time_in, allow re-entry
+      // Return existing record without error (First In preserved)
+      return existing;
     }
 
-    // Calculate late minutes (after 8:10 AM)
+    // Calculate late minutes (after 8:10 AM) - only for first time_in
     const scheduledMinutes = 8 * 60; // 8:00 AM
     const graceMinutes = 10;
     const currentMinutes = now.getHours() * 60 + now.getMinutes();

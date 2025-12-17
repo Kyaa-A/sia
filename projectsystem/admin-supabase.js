@@ -1505,14 +1505,26 @@
     container.innerHTML = html;
   }
 
-  // Clock In function
+  // Clock In function (First In, Last Out rule - preserves first time_in)
   window.clockIn = async function(employeeId) {
     try {
       const emp = employees.find(e => e.id === employeeId);
       if (!emp) throw new Error('Employee not found');
 
+      // Check if already clocked in today
+      const todayAtt = attendance.find(a => {
+        const today = new Date().toISOString().split('T')[0];
+        return a.employee_id === employeeId && a.date === today;
+      });
+
       await db.timeIn(employeeId, emp.name, emp.role);
-      if (window.toastSuccess) toastSuccess('Success', `${emp.name} clocked in`);
+
+      if (todayAtt && todayAtt.time_in) {
+        // Already clocked in - First In preserved
+        if (window.toastInfo) toastInfo('Info', `${emp.name} already clocked in (First In preserved)`);
+      } else {
+        if (window.toastSuccess) toastSuccess('Success', `${emp.name} clocked in`);
+      }
 
       await loadAllData();
       renderTimeClock();
@@ -1524,14 +1536,26 @@
     }
   };
 
-  // Clock Out function
+  // Clock Out function (Last Out rule - always updates to latest time_out)
   window.clockOut = async function(employeeId) {
     try {
       const emp = employees.find(e => e.id === employeeId);
       if (!emp) throw new Error('Employee not found');
 
+      // Check if already clocked out today
+      const todayAtt = attendance.find(a => {
+        const today = new Date().toISOString().split('T')[0];
+        return a.employee_id === employeeId && a.date === today;
+      });
+
       await db.timeOut(employeeId);
-      if (window.toastSuccess) toastSuccess('Success', `${emp.name} clocked out`);
+
+      if (todayAtt && todayAtt.time_out) {
+        // Already clocked out - Last Out updated
+        if (window.toastSuccess) toastSuccess('Success', `${emp.name} clocked out (Last Out updated)`);
+      } else {
+        if (window.toastSuccess) toastSuccess('Success', `${emp.name} clocked out`);
+      }
 
       await loadAllData();
       renderTimeClock();
