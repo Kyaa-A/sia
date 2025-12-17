@@ -396,7 +396,6 @@
     const photoPreview = document.getElementById('photoPreview');
     const photoCanvas = document.getElementById('photoCanvas');
 
-    let qrScanner = null;
     let scannedEmployee = null;
     let capturedPhoto = null;
     let isProcessing = false;
@@ -451,37 +450,42 @@
       }
     }
 
-    // Initialize QR Scanner using qr-scanner library
+    // Scanning state
+    let scanInterval = null;
+    let scanCanvas = null;
+    let scanCtx = null;
+
+    // Initialize camera and start custom scanning loop
     async function initScanner() {
       try {
-        // Create QR Scanner with minimal config - let library handle everything
-        qrScanner = new QrScanner(
-          videoElement,
-          result => {
-            console.log('=== QR DETECTED ===');
-            console.log('Data:', result.data);
-            onScanSuccess(result.data, false);
-          },
-          {
-            returnDetailedScanResult: true,
-            highlightScanRegion: true,
-            highlightCodeOutline: true
-          }
-        );
+        // Get camera stream
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
 
-        // Start scanner
-        await qrScanner.start();
+        videoElement.srcObject = stream;
+        await videoElement.play();
+
+        // Wait for video to be ready
+        await new Promise(resolve => {
+          if (videoElement.videoWidth > 0) resolve();
+          else videoElement.onloadedmetadata = resolve;
+        });
+
+        // Create canvas for scanning
+        scanCanvas = document.createElement('canvas');
+        scanCanvas.width = videoElement.videoWidth;
+        scanCanvas.height = videoElement.videoHeight;
+        scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
 
         // Hide loading overlay
         loadingOverlay.style.display = 'none';
 
-        console.log('QR Scanner started successfully');
-        console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-
-        // Log scanner state
-        console.log('Scanner active:', qrScanner._active);
-
+        console.log('Camera ready:', videoElement.videoWidth, 'x', videoElement.videoHeight);
         setStatus('Ready to scan - Show your QR code', 'ready');
+
+        // Start fast scanning loop
+        startFastScanning();
 
       } catch (err) {
         console.error('Scanner init error:', err);
@@ -493,6 +497,40 @@
         setStatus('Camera not available. Use file upload or manual entry.', 'error');
         startScanBtn.style.display = 'block';
         startScanBtn.textContent = 'Retry Camera';
+      }
+    }
+
+    // Fast scanning loop using QrScanner.scanImage
+    function startFastScanning() {
+      if (scanInterval) return;
+
+      scanInterval = setInterval(async () => {
+        if (isProcessing) return;
+        if (!videoElement || videoElement.readyState < 2) return;
+
+        try {
+          // Capture frame
+          scanCtx.drawImage(videoElement, 0, 0);
+
+          // Scan using QrScanner.scanImage (this works!)
+          const result = await QrScanner.scanImage(scanCanvas, { returnDetailedScanResult: true });
+
+          console.log('=== QR DETECTED ===');
+          console.log('Data:', result.data);
+          onScanSuccess(result.data, false);
+
+        } catch (err) {
+          // No QR found - this is normal, keep scanning
+        }
+      }, 150); // Scan every 150ms (~7 times per second)
+
+      console.log('Fast scanning started');
+    }
+
+    function stopFastScanning() {
+      if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
       }
     }
 
@@ -594,9 +632,7 @@
         }
 
         // Pause scanner while confirming
-        if (qrScanner) {
-          qrScanner.pause();
-        }
+        stopFastScanning();
 
       } catch (err) {
         console.error('Scan processing error:', err);
@@ -612,19 +648,17 @@
     // Capture photo from video stream
     async function capturePhoto() {
       try {
-        // Get video element from qr-scanner or our video element
-        const video = qrScanner?.$video || videoElement;
-        if (!video || !video.videoWidth) {
+        if (!videoElement || !videoElement.videoWidth) {
           console.warn('No video element found');
           return;
         }
 
         const canvas = photoCanvas;
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
+        canvas.width = videoElement.videoWidth || 640;
+        canvas.height = videoElement.videoHeight || 480;
 
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0);
+        ctx.drawImage(videoElement, 0, 0);
 
         capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
 
@@ -712,9 +746,7 @@
       setStatus('Ready to scan - Show your QR code', 'ready');
 
       // Resume scanner
-      if (qrScanner) {
-        qrScanner.start();
-      }
+      startFastScanning();
     }
 
     // Start scanner button (fallback)
@@ -768,50 +800,34 @@
       if (input) input.value = '';
     };
 
-    // Capture current frame and scan it (debug function)
+    // Capture current frame and scan it (manual trigger)
     window.captureAndScan = async function() {
       try {
-        setStatus('Capturing...', 'processing');
+        setStatus('Scanning...', 'processing');
 
-        // Get video element - try multiple sources
-        const video = qrScanner?.$video || videoElement;
-        console.log('Video source:', video ? 'found' : 'not found');
-        console.log('Video ready state:', video?.readyState);
-        console.log('Video dimensions:', video?.videoWidth, 'x', video?.videoHeight);
-
-        if (!video || !video.videoWidth) {
+        if (!videoElement || !videoElement.videoWidth) {
           showToast('Camera not ready', 'error');
           return;
         }
 
-        // Capture frame to canvas (normal - no flip)
+        // Capture frame to canvas
         const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0);
-
-        // Show captured image in new window for debug
-        const dataURL = canvas.toDataURL('image/png');
-        console.log('Captured frame:', canvas.width, 'x', canvas.height);
-        console.log('DataURL length:', dataURL.length);
-
-        // Open in new tab to verify capture
-        const debugWin = window.open('', '_blank', 'width=400,height=400');
-        debugWin.document.write('<html><body style="margin:0;background:#000"><img src="' + dataURL + '" style="max-width:100%;max-height:100%"><p style="color:#fff;text-align:center">This is what was captured. Does QR show correctly?</p></body></html>');
+        ctx.drawImage(videoElement, 0, 0);
 
         // Try scanning
         const result = await QrScanner.scanImage(canvas, { returnDetailedScanResult: true });
-        console.log('=== CAPTURE SCAN DETECTED ===');
+        console.log('=== MANUAL SCAN DETECTED ===');
         console.log('Data:', result.data);
-        debugWin.close();
         onScanSuccess(result.data, false);
 
       } catch (err) {
         console.error('Capture scan error:', err);
-        setStatus('No QR code found in frame', 'error');
-        showToast('Check the popup window to see captured image', 'info');
-        setTimeout(() => setStatus('Ready to scan - Show your QR code', 'ready'), 3000);
+        setStatus('No QR code found', 'error');
+        showToast('No QR code detected. Try again.', 'error');
+        setTimeout(() => setStatus('Ready to scan - Show your QR code', 'ready'), 2000);
       }
     };
 
