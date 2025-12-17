@@ -242,6 +242,35 @@
             <tbody></tbody>
           </table>
         </div>
+
+        <!-- Bulk Update Section -->
+        <div style="margin-top:16px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="margin:0;color:#1e3a5f">Bulk Update All Employees</h3>
+            <span style="font-size:12px;color:#6b7280">Changes will apply to all active employees</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px">
+            <div>
+              <label style="font-size:13px;font-weight:600;color:#374151">Daily Rate (₱)</label>
+              <input id="bulkDailyRate" type="number" min="0" step="0.01" placeholder="e.g. 510" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box" />
+            </div>
+            <div>
+              <label style="font-size:13px;font-weight:600;color:#374151">SSS (weekly ₱)</label>
+              <input id="bulkSSS" type="number" min="0" step="0.01" placeholder="e.g. 300" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box" />
+            </div>
+            <div>
+              <label style="font-size:13px;font-weight:600;color:#374151">PhilHealth (weekly ₱)</label>
+              <input id="bulkPhilHealth" type="number" min="0" step="0.01" placeholder="e.g. 250" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box" />
+            </div>
+            <div>
+              <label style="font-size:13px;font-weight:600;color:#374151">Pag-IBIG (weekly ₱)</label>
+              <input id="bulkPagIBIG" type="number" min="0" step="0.01" placeholder="e.g. 200" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box" />
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px">
+            <button id="bulkUpdateBtn" style="padding:10px 20px;background:#059669;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">Apply to All Employees</button>
+          </div>
+        </div>
       </div>
     </div>
 

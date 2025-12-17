@@ -202,6 +202,12 @@
       addBtn.addEventListener('click', () => openEmployeeModal());
     }
 
+    // Bulk update button
+    const bulkUpdateBtn = document.getElementById('bulkUpdateBtn');
+    if (bulkUpdateBtn) {
+      bulkUpdateBtn.addEventListener('click', handleBulkUpdate);
+    }
+
     // Chart navigation
     const chartPrevBtn = document.getElementById('chartPrevWeek');
     const chartNextBtn = document.getElementById('chartNextWeek');
@@ -1743,6 +1749,89 @@
       if (window.toastError) toastError('Error', err.message || 'Failed to restore employee');
     }
   };
+
+  // =============================================
+  // BULK UPDATE ALL EMPLOYEES
+  // =============================================
+  async function handleBulkUpdate() {
+    const dailyRateInput = document.getElementById('bulkDailyRate');
+    const sssInput = document.getElementById('bulkSSS');
+    const philHealthInput = document.getElementById('bulkPhilHealth');
+    const pagIbigInput = document.getElementById('bulkPagIBIG');
+
+    const dailyRate = dailyRateInput?.value ? parseFloat(dailyRateInput.value) : null;
+    const sss = sssInput?.value ? parseFloat(sssInput.value) : null;
+    const philHealth = philHealthInput?.value ? parseFloat(philHealthInput.value) : null;
+    const pagIbig = pagIbigInput?.value ? parseFloat(pagIbigInput.value) : null;
+
+    // Check if at least one field has a value
+    if (dailyRate === null && sss === null && philHealth === null && pagIbig === null) {
+      if (window.toastWarning) toastWarning('Warning', 'Please enter at least one value to update');
+      return;
+    }
+
+    // Validate values
+    if (dailyRate !== null && dailyRate < 0) {
+      if (window.toastError) toastError('Error', 'Daily rate cannot be negative');
+      return;
+    }
+    if (sss !== null && (sss < 0 || sss > 5000)) {
+      if (window.toastError) toastError('Error', 'SSS must be between ₱0 and ₱5,000');
+      return;
+    }
+    if (philHealth !== null && (philHealth < 0 || philHealth > 5000)) {
+      if (window.toastError) toastError('Error', 'PhilHealth must be between ₱0 and ₱5,000');
+      return;
+    }
+    if (pagIbig !== null && (pagIbig < 0 || pagIbig > 1000)) {
+      if (window.toastError) toastError('Error', 'Pag-IBIG must be between ₱0 and ₱1,000');
+      return;
+    }
+
+    // Build update summary
+    const changes = [];
+    if (dailyRate !== null) changes.push(`Daily Rate: ₱${dailyRate}`);
+    if (sss !== null) changes.push(`SSS: ₱${sss}`);
+    if (philHealth !== null) changes.push(`PhilHealth: ₱${philHealth}`);
+    if (pagIbig !== null) changes.push(`Pag-IBIG: ₱${pagIbig}`);
+
+    const confirmMsg = `This will update ALL ${employees.length} active employees with:\n\n${changes.join('\n')}\n\nAre you sure you want to continue?`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      // Build update object with only non-null values
+      const updateData = {};
+      if (dailyRate !== null) updateData.salary = dailyRate;
+      if (sss !== null) updateData.sss_deduction = sss;
+      if (philHealth !== null) updateData.philhealth_deduction = philHealth;
+      if (pagIbig !== null) updateData.pagibig_deduction = pagIbig;
+
+      // Update all employees in Supabase
+      const { error } = await supabaseClient
+        .from('employees')
+        .update(updateData)
+        .not('id', 'is', null); // Update all rows
+
+      if (error) throw error;
+
+      // Clear inputs
+      if (dailyRateInput) dailyRateInput.value = '';
+      if (sssInput) sssInput.value = '';
+      if (philHealthInput) philHealthInput.value = '';
+      if (pagIbigInput) pagIbigInput.value = '';
+
+      if (window.toastSuccess) toastSuccess('Success', `Updated ${employees.length} employees successfully`);
+
+      // Reload data and re-render
+      await loadAllData();
+      renderEmployees();
+      updateHomeStats();
+
+    } catch (err) {
+      console.error('Error in bulk update:', err);
+      if (window.toastError) toastError('Error', err.message || 'Failed to update employees');
+    }
+  }
 
   // =============================================
   // EMPLOYEE PAYSLIP HISTORY VIEW
