@@ -290,9 +290,9 @@
   <div class="clock" id="liveClock">--:--:--</div>
 
   <div class="container">
-    <div class="scanner-container" style="border:3px solid #10b981;border-radius:12px;position:relative">
-      <video id="videoElement" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
-      <div id="loadingOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;background:rgba(0,0,0,0.8)">
+    <div class="scanner-container" id="scannerContainer" style="border:3px solid #10b981;border-radius:12px;position:relative;overflow:hidden">
+      <video id="videoElement" style="width:100%;height:100%;object-fit:cover"></video>
+      <div id="loadingOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;background:rgba(0,0,0,0.8);z-index:10">
         <div style="font-size:48px;margin-bottom:16px">📷</div>
         <div style="font-size:16px;margin-bottom:8px">Initializing Camera...</div>
         <div style="font-size:12px;opacity:0.7">Please allow camera access when prompted</div>
