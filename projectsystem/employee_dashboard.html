@@ -60,12 +60,20 @@
           </div>
 
           <div class="card section" style="margin-top:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <!-- Header Row -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
               <h2 style="margin:0">Recent Payslips</h2>
               <div style="display:flex;align-items:center;gap:12px">
-                <button id="payslipPrevMonth" class="secondary" style="padding:6px 12px">◀ Previous</button>
-                <div id="payslipMonthLabel" style="min-width:180px;text-align:center;font-weight:600;color:#1e3a5f">—</div>
-                <button id="payslipNextMonth" class="secondary" style="padding:6px 12px">Next ▶</button>
+                <button id="payslipPrevMonth" class="secondary" style="padding:8px 14px;font-size:13px">◀ Previous</button>
+                <div id="payslipMonthLabel" style="min-width:140px;text-align:center;font-weight:600;color:#1e3a5f;font-size:14px">—</div>
+                <button id="payslipNextMonth" class="secondary" style="padding:8px 14px;font-size:13px">Next ▶</button>
+              </div>
+            </div>
+            <!-- Search Row -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+              <div style="position:relative;flex:1;max-width:320px">
+                <input type="text" id="payslipSearchInput" placeholder="Search by date, status, or amount..." style="width:100%;padding:10px 14px;padding-right:40px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#fff;box-sizing:border-box">
+                <button id="payslipSearchClear" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#9ca3af;cursor:pointer;padding:4px 8px;font-size:13px;border-radius:4px" title="Clear search">✕</button>
               </div>
             </div>
             <div style="overflow:auto;max-height:420px;scrollbar-width:none;-ms-overflow-style:none" class="scrollable-content">

@@ -13,6 +13,7 @@
   let payslips = [];
   let leaveRequests = [];
   let currentPayslipMonth = new Date();
+  let payslipSearchQuery = '';
 
   // Get employee ID from session
   const currentEmployeeId = localStorage.getItem('currentEmployeeId');
@@ -137,6 +138,50 @@
     if (prevBtn) prevBtn.addEventListener('click', () => navigatePayslipMonth(-1));
     if (nextBtn) nextBtn.addEventListener('click', () => navigatePayslipMonth(1));
 
+    // Payslip search
+    const searchInput = document.getElementById('payslipSearchInput');
+    const searchClear = document.getElementById('payslipSearchClear');
+
+    function updateClearBtnVisibility() {
+      if (searchClear) {
+        searchClear.style.display = searchInput && searchInput.value ? 'block' : 'none';
+      }
+    }
+
+    if (searchInput) {
+      updateClearBtnVisibility();
+      searchInput.addEventListener('input', (e) => {
+        payslipSearchQuery = e.target.value;
+        updateClearBtnVisibility();
+        renderPayslips();
+      });
+      searchInput.addEventListener('focus', () => {
+        searchInput.style.borderColor = '#3b82f6';
+        searchInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+      });
+      searchInput.addEventListener('blur', () => {
+        searchInput.style.borderColor = '#d1d5db';
+        searchInput.style.boxShadow = 'none';
+      });
+    }
+
+    if (searchClear) {
+      searchClear.addEventListener('mouseenter', () => {
+        searchClear.style.color = '#374151';
+        searchClear.style.background = '#f3f4f6';
+      });
+      searchClear.addEventListener('mouseleave', () => {
+        searchClear.style.color = '#9ca3af';
+        searchClear.style.background = 'none';
+      });
+      searchClear.addEventListener('click', () => {
+        payslipSearchQuery = '';
+        if (searchInput) searchInput.value = '';
+        updateClearBtnVisibility();
+        renderPayslips();
+      });
+    }
+
     // Close modals
     const closePayslip = document.getElementById('closePayslip');
     if (closePayslip) closePayslip.addEventListener('click', closePayslipModal);
@@ -215,15 +260,34 @@
     const monthStart = new Date(currentPayslipMonth.getFullYear(), currentPayslipMonth.getMonth(), 1);
     const monthEnd = new Date(currentPayslipMonth.getFullYear(), currentPayslipMonth.getMonth() + 1, 0);
 
-    const monthPayslips = payslips.filter(p => {
+    let monthPayslips = payslips.filter(p => {
       const weekStart = new Date(p.week_start);
       return weekStart >= monthStart && weekStart <= monthEnd;
     });
 
+    // Apply search filter
+    if (payslipSearchQuery && payslipSearchQuery.trim() !== '') {
+      const query = payslipSearchQuery.toLowerCase().trim();
+      monthPayslips = monthPayslips.filter(p => {
+        const date = (p.week_start || '').toLowerCase();
+        const status = (p.status || '').toLowerCase();
+        const grossNum = Number(p.gross_pay);
+        const netNum = Number(p.net_pay);
+        // Search in date, status, and amounts (raw numbers for easier matching)
+        return date.includes(query) ||
+               status.includes(query) ||
+               String(Math.floor(grossNum)).includes(query) ||
+               String(Math.floor(netNum)).includes(query) ||
+               String(grossNum).includes(query) ||
+               String(netNum).includes(query);
+      });
+    }
+
     tbody.innerHTML = '';
 
     if (monthPayslips.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4b5563;padding:24px">No payslips for this month</td></tr>';
+      const msg = payslipSearchQuery ? 'No payslips matching your search' : 'No payslips for this month';
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#4b5563;padding:24px">${msg}</td></tr>`;
       return;
     }
 
@@ -323,6 +387,33 @@
 
     if (new Date(endDate) < new Date(startDate)) {
       if (window.toastError) toastError('Error', 'End date cannot be before start date');
+      return;
+    }
+
+    // Validate: Cannot request leave for past dates
+    // Use string comparison to avoid timezone issues
+    const today = new Date();
+    const todayStr = today.getFullYear() + '-' +
+                     String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                     String(today.getDate()).padStart(2, '0');
+    if (startDate < todayStr) {
+      if (window.toastError) toastError('Error', 'Cannot request leave for past dates');
+      return;
+    }
+
+    // Check for overlapping leave requests (Pending or Approved)
+    const overlapping = leaveRequests.find(leave => {
+      if (leave.status === 'Rejected' || leave.status === 'Cancelled') return false;
+      const existingStart = new Date(leave.start_date);
+      const existingEnd = new Date(leave.end_date);
+      const newStart = new Date(startDate);
+      const newEnd = new Date(endDate);
+      // Check if date ranges overlap
+      return newStart <= existingEnd && newEnd >= existingStart;
+    });
+
+    if (overlapping) {
+      if (window.toastError) toastError('Error', `You already have a ${overlapping.status.toLowerCase()} leave request for ${overlapping.start_date} to ${overlapping.end_date}`);
       return;
     }
 

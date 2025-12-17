@@ -145,6 +145,7 @@
   const startDate = getEmployeeStartDate();
   let currentPayslipMonth = new Date().getMonth();
   let currentPayslipYear = new Date().getFullYear();
+  let payslipSearchQuery = '';
   
   // Set initial month to current month, but ensure we can navigate back to start date
   const startMonth = startDate.getMonth();
@@ -428,28 +429,46 @@
 
     // Filter by current month/year
     const monthFiltered = filterPayslipsByMonth(filtered, currentPayslipMonth, currentPayslipYear);
-    
+
+    // Apply search filter
+    const searchFiltered = monthFiltered.filter(p => {
+      if (!payslipSearchQuery || payslipSearchQuery.trim() === '') return true;
+      const query = payslipSearchQuery.toLowerCase().trim();
+      const label = (p.weekLabel || p.date || p.weekStart || (p.created ? new Date(p.created).toLocaleDateString() : '')).toLowerCase();
+      const status = (p.status || 'Approved').toLowerCase();
+      // Get raw numbers for searching
+      const grossNum = Number(p.gross);
+      const netNum = Number(p.net);
+      return label.includes(query) ||
+             status.includes(query) ||
+             String(Math.floor(grossNum)).includes(query) ||
+             String(Math.floor(netNum)).includes(query) ||
+             String(grossNum).includes(query) ||
+             String(netNum).includes(query);
+    });
+
     // Update month label
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                        'July', 'August', 'September', 'October', 'November', 'December'];
     const monthLabel = document.getElementById('payslipMonthLabel');
     if (monthLabel) {
       monthLabel.textContent = `${monthNames[currentPayslipMonth]} ${currentPayslipYear}`;
     }
-    
+
     // Update navigation buttons state
     updateNavigationButtons();
 
     // Store filtered payslips for button click handlers
-    window.currentMonthPayslips = monthFiltered;
+    window.currentMonthPayslips = searchFiltered;
 
     els.payslipTbody.innerHTML = '';
-    if (monthFiltered.length === 0) {
+    if (searchFiltered.length === 0) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="5" style="text-align:center;padding:20px;color:#6b7280">No payslips for this month</td>`;
+      const msg = payslipSearchQuery ? 'No payslips matching your search' : 'No payslips for this month';
+      tr.innerHTML = `<td colspan="5" style="text-align:center;padding:20px;color:#6b7280">${msg}</td>`;
       els.payslipTbody.appendChild(tr);
     } else {
-      monthFiltered.forEach((p, i)=>{
+      searchFiltered.forEach((p, i)=>{
         const label = p.weekLabel || p.date || p.weekStart || (p.created ? new Date(p.created).toLocaleDateString() : '—');
         const status = p.status || 'Approved';
         const tr = document.createElement('tr');
@@ -909,13 +928,64 @@
       const currentDate = new Date(currentPayslipYear, currentPayslipMonth, 1);
       const currentDateObj = new Date(today.getFullYear(), today.getMonth(), 1);
       if (currentDate.getTime() >= currentDateObj.getTime()) return; // Can't go after current month
-      
+
       currentPayslipMonth++;
       if (currentPayslipMonth > 11) {
         currentPayslipMonth = 0;
         currentPayslipYear++;
       }
       updateNavigationButtons();
+      renderPayslips();
+    });
+  }
+
+  // Payslip search handlers
+  const payslipSearchInput = document.getElementById('payslipSearchInput');
+  const payslipSearchClear = document.getElementById('payslipSearchClear');
+
+  // Toggle clear button visibility based on input
+  function updateClearButtonVisibility() {
+    if (payslipSearchClear) {
+      payslipSearchClear.style.display = payslipSearchInput && payslipSearchInput.value ? 'block' : 'none';
+    }
+  }
+
+  if (payslipSearchInput) {
+    // Initial state - hide clear button
+    updateClearButtonVisibility();
+
+    payslipSearchInput.addEventListener('input', (e) => {
+      payslipSearchQuery = e.target.value;
+      updateClearButtonVisibility();
+      renderPayslips();
+    });
+
+    // Focus styling
+    payslipSearchInput.addEventListener('focus', () => {
+      payslipSearchInput.style.borderColor = '#3b82f6';
+      payslipSearchInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+    });
+    payslipSearchInput.addEventListener('blur', () => {
+      payslipSearchInput.style.borderColor = '#d1d5db';
+      payslipSearchInput.style.boxShadow = 'none';
+    });
+  }
+
+  if (payslipSearchClear) {
+    // Hover effect for clear button
+    payslipSearchClear.addEventListener('mouseenter', () => {
+      payslipSearchClear.style.color = '#374151';
+      payslipSearchClear.style.background = '#f3f4f6';
+    });
+    payslipSearchClear.addEventListener('mouseleave', () => {
+      payslipSearchClear.style.color = '#9ca3af';
+      payslipSearchClear.style.background = 'none';
+    });
+
+    payslipSearchClear.addEventListener('click', () => {
+      payslipSearchQuery = '';
+      if (payslipSearchInput) payslipSearchInput.value = '';
+      updateClearButtonVisibility();
       renderPayslips();
     });
   }

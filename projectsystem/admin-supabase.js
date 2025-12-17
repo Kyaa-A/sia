@@ -267,6 +267,7 @@
         <td>${emp.role}</td>
         <td>₱${Number(weeklySalary).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
         <td class="actions">
+          <button style="background:#0ea5e9;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer" onclick="viewEmployeePayslips('${emp.id}', '${emp.name.replace(/'/g, "\\'")}')">Payslips</button>
           <button class="secondary" onclick="editEmployee('${emp.id}')">Edit</button>
           <button class="warn" onclick="archiveEmployee('${emp.id}')">Remove</button>
         </td>
@@ -707,16 +708,44 @@
     const weekEnd = getPayrollWeekEnd(weekStart);
 
     // Get attendance for this employee for this week
+    // Convert to string for comparison since employeeId from select is string
     const weekAttendance = attendance.filter(a => {
-      return a.employee_id === employeeId &&
+      return String(a.employee_id) === String(employeeId) &&
              a.date >= weekStart &&
              a.date <= weekEnd;
     });
 
+    // Count approved leave days within this week
+    // Convert to string for comparison since employeeId from select is string
+    const approvedLeaveDays = leaveRequests.filter(leave => {
+      if (String(leave.employee_id) !== String(employeeId) || leave.status !== 'Approved') return false;
+      const leaveStart = new Date(leave.start_date);
+      const leaveEnd = new Date(leave.end_date);
+      const weekStartDate = new Date(weekStart);
+      const weekEndDate = new Date(weekEnd);
+      // Check if leave overlaps with this week
+      return leaveStart <= weekEndDate && leaveEnd >= weekStartDate;
+    }).reduce((total, leave) => {
+      // Count days within this week
+      const leaveStart = new Date(leave.start_date);
+      const leaveEnd = new Date(leave.end_date);
+      const weekStartDate = new Date(weekStart);
+      const weekEndDate = new Date(weekEnd);
+      // Clamp leave dates to week boundaries
+      const effectiveStart = leaveStart < weekStartDate ? weekStartDate : leaveStart;
+      const effectiveEnd = leaveEnd > weekEndDate ? weekEndDate : leaveEnd;
+      // Calculate days (inclusive)
+      const days = Math.floor((effectiveEnd - effectiveStart) / (1000 * 60 * 60 * 24)) + 1;
+      return total + days;
+    }, 0);
+
     // Calculate days worked and hours
-    const daysWorked = weekAttendance.length;
+    const attendanceDays = weekAttendance.length;
     const totalHours = weekAttendance.reduce((sum, a) => sum + (a.worked_hours || 0), 0);
     const totalLateMinutes = weekAttendance.reduce((sum, a) => sum + (a.late_minutes || 0), 0);
+
+    // Total payable days = attendance days + approved leave days (max 6 per week)
+    const daysWorked = Math.min(attendanceDays + approvedLeaveDays, 6);
 
     // Calculate gross pay (daily rate = annual salary / 52 weeks / 6 days)
     const dailyRate = emp.salary / 52 / 6;
@@ -741,8 +770,16 @@
     }
 
     // Use the current input values for calculation (allows manual override)
-    const lateHours = parseFloat(lateHoursInput?.value) || 0;
-    const lateMinutes = parseFloat(lateMinutesInput?.value) || 0;
+    // Validate and clamp late values to reasonable bounds
+    let lateHours = parseFloat(lateHoursInput?.value) || 0;
+    let lateMinutes = parseFloat(lateMinutesInput?.value) || 0;
+    // Clamp to non-negative and max reasonable values (48 hours = 6 days * 8 hours)
+    lateHours = Math.max(0, Math.min(lateHours, 48));
+    lateMinutes = Math.max(0, Math.min(lateMinutes, 59));
+    // Update inputs if they were clamped
+    if (lateHoursInput && parseFloat(lateHoursInput.value) !== lateHours) lateHoursInput.value = lateHours;
+    if (lateMinutesInput && parseFloat(lateMinutesInput.value) !== lateMinutes) lateMinutesInput.value = lateMinutes;
+
     const totalLateMins = (lateHours * 60) + lateMinutes;
 
     // Late deduction (hourly rate = daily rate / 8)
@@ -763,7 +800,11 @@
       lateDeduction: document.getElementById('payrollInlineLateDeduction')
     };
 
-    if (els.days) els.days.textContent = daysWorked;
+    // Show days breakdown (attendance + leave)
+    const daysDisplay = approvedLeaveDays > 0
+      ? `${daysWorked} (${attendanceDays} work + ${approvedLeaveDays} leave)`
+      : `${daysWorked}`;
+    if (els.days) els.days.textContent = daysDisplay;
     if (els.hours) els.hours.textContent = totalHours.toFixed(1);
     if (els.gross) els.gross.textContent = db.formatCurrency(grossPay);
     if (els.stat) els.stat.textContent = db.formatCurrency(statutoryDeductions);
@@ -772,13 +813,40 @@
 
     // Check for warnings
     let notice = '';
-    const existingPayslip = payslips.find(p => p.employee_id === employeeId && p.week_start === weekStart);
+    let canRunPayroll = true;
+    const existingPayslip = payslips.find(p => String(p.employee_id) === String(employeeId) && p.week_start === weekStart);
     if (existingPayslip) {
-      notice = `Payslip already exists for this week (${existingPayslip.status}). Running payroll will update it.`;
+      if (existingPayslip.status === 'Approved') {
+        notice = `⚠️ Payslip already APPROVED for this week. Cannot modify approved payslips.`;
+        canRunPayroll = false;
+      } else {
+        notice = `Payslip already exists for this week (${existingPayslip.status}). Running payroll will update it.`;
+      }
     } else if (daysWorked === 0) {
-      notice = 'No attendance records found for this week. Gross pay will be ₱0.00.';
+      notice = 'No attendance or approved leave found for this week. Gross pay will be ₱0.00.';
     }
-    if (els.notice) els.notice.textContent = notice;
+    // Warning for negative net pay
+    if (netPay < 0 && daysWorked > 0) {
+      notice = `⚠️ Warning: Deductions (₱${(statutoryDeductions + lateDeduction).toLocaleString(undefined, {minimumFractionDigits: 2})}) exceed gross pay. Net pay will be ₱0.00.`;
+    }
+    // Overtime notification (hours > 48 for the week, or any day > 8)
+    const maxRegularHours = 48; // 6 days * 8 hours
+    if (totalHours > maxRegularHours && !notice) {
+      const overtimeHours = (totalHours - maxRegularHours).toFixed(1);
+      notice = `ℹ️ Note: ${overtimeHours} overtime hours detected. Currently paid at regular rate.`;
+    }
+    if (els.notice) {
+      els.notice.textContent = notice;
+      els.notice.style.color = (netPay < 0 || !canRunPayroll) ? '#dc2626' : (totalHours > maxRegularHours ? '#d97706' : '#6b7280');
+    }
+
+    // Disable/enable confirm button based on whether payroll can be run
+    const confirmBtn = document.getElementById('payrollInlineConfirm');
+    if (confirmBtn) {
+      confirmBtn.disabled = !canRunPayroll;
+      confirmBtn.style.opacity = canRunPayroll ? '1' : '0.5';
+      confirmBtn.style.cursor = canRunPayroll ? 'pointer' : 'not-allowed';
+    }
 
     // Store calculation data for confirmation
     window._payrollData = {
@@ -804,9 +872,16 @@
       return;
     }
 
+    // Check if there's an approved payslip for this week (safety check)
+    const existingPayslip = payslips.find(p => String(p.employee_id) === String(data.employeeId) && p.week_start === data.weekStart);
+    if (existingPayslip && existingPayslip.status === 'Approved') {
+      if (window.toastError) toastError('Error', 'Cannot modify an approved payslip. Please reject it first if changes are needed.');
+      return;
+    }
+
     // Warn if no days worked
     if (data.daysWorked === 0) {
-      if (!confirm('No attendance records found for this week. This will create a payslip with ₱0.00 gross pay. Continue?')) {
+      if (!confirm('No attendance or approved leave found for this week. This will create a payslip with ₱0.00 gross pay. Continue?')) {
         return;
       }
     }
@@ -1077,6 +1152,33 @@
     const philhealth = parseFloat(document.getElementById('empPhilhealth').value) || 250;
     const pagibig = parseFloat(document.getElementById('empPagibig').value) || 200;
 
+    // Validate deduction bounds
+    if (sss < 0 || sss > 5000) {
+      if (window.toastError) toastError('Error', 'SSS deduction must be between ₱0 and ₱5,000');
+      return;
+    }
+    if (philhealth < 0 || philhealth > 5000) {
+      if (window.toastError) toastError('Error', 'PhilHealth deduction must be between ₱0 and ₱5,000');
+      return;
+    }
+    if (pagibig < 0 || pagibig > 1000) {
+      if (window.toastError) toastError('Error', 'Pag-IBIG deduction must be between ₱0 and ₱1,000');
+      return;
+    }
+    if (salary < 0) {
+      if (window.toastError) toastError('Error', 'Salary cannot be negative');
+      return;
+    }
+
+    // Warn if total deductions seem too high relative to weekly salary
+    const weeklyGross = salary / 52;
+    const totalDeductions = sss + philhealth + pagibig;
+    if (totalDeductions > weeklyGross * 0.5) {
+      if (!confirm(`Warning: Total statutory deductions (₱${totalDeductions.toLocaleString()}) exceed 50% of weekly gross (₱${weeklyGross.toFixed(2)}). Continue anyway?`)) {
+        return;
+      }
+    }
+
     try {
       if (editingEmployeeId) {
         // Update existing employee
@@ -1139,6 +1241,227 @@
       if (window.toastError) toastError('Error', err.message || 'Failed to restore employee');
     }
   };
+
+  // =============================================
+  // EMPLOYEE PAYSLIP HISTORY VIEW
+  // =============================================
+  let empPayslipSearchQuery = '';
+  let currentEmpPayslips = [];
+
+  window.viewEmployeePayslips = async function(empId, empName) {
+    const modal = document.getElementById('empPayslipModal');
+    const title = document.getElementById('empPayslipModalTitle');
+    const tbody = document.querySelector('#empPayslipTable tbody');
+    const searchInput = document.getElementById('empPayslipSearch');
+    const summary = document.getElementById('empPayslipSummary');
+
+    if (!modal || !tbody) return;
+
+    // Set title
+    if (title) title.textContent = `Payslip History - ${empName}`;
+
+    // Reset search
+    empPayslipSearchQuery = '';
+    if (searchInput) searchInput.value = '';
+
+    // Show modal
+    modal.style.display = 'flex';
+
+    // Loading state
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#6b7280">Loading payslips...</td></tr>';
+    if (summary) summary.style.display = 'none';
+
+    try {
+      // Fetch payslips for this employee
+      const { data, error } = await supabaseClient
+        .from('payslips')
+        .select('*')
+        .eq('employee_id', empId)
+        .order('week_start', { ascending: false });
+
+      if (error) throw error;
+
+      currentEmpPayslips = data || [];
+      renderEmpPayslipTable();
+
+    } catch (err) {
+      console.error('Error fetching payslips:', err);
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#dc2626">Failed to load payslips</td></tr>';
+    }
+  };
+
+  function renderEmpPayslipTable() {
+    const tbody = document.querySelector('#empPayslipTable tbody');
+    const summary = document.getElementById('empPayslipSummary');
+    const countEl = document.getElementById('empPayslipCount');
+    const grossEl = document.getElementById('empPayslipTotalGross');
+    const netEl = document.getElementById('empPayslipTotalNet');
+
+    if (!tbody) return;
+
+    // Apply search filter
+    let filtered = currentEmpPayslips;
+    if (empPayslipSearchQuery && empPayslipSearchQuery.trim() !== '') {
+      const query = empPayslipSearchQuery.toLowerCase().trim();
+      filtered = currentEmpPayslips.filter(p => {
+        const week = (p.week_start || '').toLowerCase();
+        const status = (p.status || '').toLowerCase();
+        const gross = String(Math.floor(Number(p.gross_pay)));
+        const net = String(Math.floor(Number(p.net_pay)));
+        return week.includes(query) || status.includes(query) || gross.includes(query) || net.includes(query);
+      });
+    }
+
+    tbody.innerHTML = '';
+
+    if (filtered.length === 0) {
+      const msg = empPayslipSearchQuery ? 'No payslips matching your search' : 'No payslips found for this employee';
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:#6b7280">${msg}</td></tr>`;
+      if (summary) summary.style.display = 'none';
+      return;
+    }
+
+    // Calculate totals
+    let totalGross = 0;
+    let totalNet = 0;
+
+    filtered.forEach((p, idx) => {
+      const gross = Number(p.gross_pay) || 0;
+      const net = Number(p.net_pay) || 0;
+      const deductions = Number(p.total_deductions) || (gross - net);
+      totalGross += gross;
+      totalNet += net;
+
+      const statusClass = p.status === 'Approved' ? 'badge-success' :
+                         p.status === 'Rejected' ? 'badge-error' : 'badge-warning';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.week_start || '—'}</td>
+        <td>₱${gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td style="color:#dc2626">-₱${deductions.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td style="color:#059669;font-weight:600">₱${net.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td><span class="badge ${statusClass}">${p.status || 'Pending'}</span></td>
+        <td><button class="secondary" onclick="viewPaystubDetail('${p.id}')" style="padding:4px 10px;font-size:12px">View</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Show summary
+    if (summary) {
+      summary.style.display = 'block';
+      if (countEl) countEl.textContent = filtered.length;
+      if (grossEl) grossEl.textContent = '₱' + totalGross.toLocaleString(undefined, {minimumFractionDigits: 2});
+      if (netEl) netEl.textContent = '₱' + totalNet.toLocaleString(undefined, {minimumFractionDigits: 2});
+    }
+  }
+
+  // View paystub detail
+  let currentViewEmployee = null;
+
+  window.viewPaystubDetail = function(payslipId) {
+    const payslip = currentEmpPayslips.find(p => p.id === payslipId);
+    if (!payslip) return;
+
+    // Get employee info
+    const emp = employees.find(e => e.id === payslip.employee_id) || {};
+
+    const content = document.getElementById('paystubContent');
+    if (content) {
+      const gross = Number(payslip.gross_pay) || 0;
+      const net = Number(payslip.net_pay) || 0;
+      const sss = Number(payslip.sss) || 0;
+      const philhealth = Number(payslip.philhealth) || 0;
+      const pagibig = Number(payslip.pagibig) || 0;
+      const lateDeduction = Number(payslip.late_deduction) || 0;
+
+      content.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div class="muted" style="font-size:12px;color:#6b7280">Employee</div>
+            <div style="font-weight:600">${emp.name || 'Unknown'}</div>
+          </div>
+          <div>
+            <div class="muted" style="font-size:12px;color:#6b7280">Employee ID</div>
+            <div style="font-weight:600">${payslip.employee_id}</div>
+          </div>
+          <div>
+            <div class="muted" style="font-size:12px;color:#6b7280">Period</div>
+            <div style="font-weight:600">${payslip.week_start || '—'} to ${payslip.week_end || '—'}</div>
+          </div>
+          <div>
+            <div class="muted" style="font-size:12px;color:#6b7280">Status</div>
+            <div style="font-weight:600">${payslip.status || 'Pending'}</div>
+          </div>
+        </div>
+        <hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px">
+          <div>Gross Pay:</div>
+          <div style="text-align:right;font-weight:600">₱${gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div>SSS:</div>
+          <div style="text-align:right;color:#ef4444">-₱${sss.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div>PhilHealth:</div>
+          <div style="text-align:right;color:#ef4444">-₱${philhealth.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div>Pag-IBIG:</div>
+          <div style="text-align:right;color:#ef4444">-₱${pagibig.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div>Late Deduction:</div>
+          <div style="text-align:right;color:#ef4444">-₱${lateDeduction.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        </div>
+        <hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb">
+        <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700">
+          <span>Net Pay:</span>
+          <span style="color:#10b981">₱${net.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+        </div>
+      `;
+    }
+
+    const modal = document.getElementById('paystubModal');
+    if (modal) modal.style.display = 'flex';
+  };
+
+  // Close modal handlers
+  document.addEventListener('DOMContentLoaded', () => {
+    const closeBtn = document.getElementById('closeEmpPayslipModal');
+    const modal = document.getElementById('empPayslipModal');
+    const searchInput = document.getElementById('empPayslipSearch');
+
+    if (closeBtn && modal) {
+      closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+    }
+
+    // Close on backdrop click
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.style.display = 'none';
+      });
+    }
+
+    // Search functionality
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        empPayslipSearchQuery = e.target.value;
+        renderEmpPayslipTable();
+      });
+    }
+
+    // Paystub modal close handlers
+    const paystubModal = document.getElementById('paystubModal');
+    const closePaystubBtn = document.getElementById('closePaystubModal');
+
+    if (closePaystubBtn && paystubModal) {
+      closePaystubBtn.addEventListener('click', () => {
+        paystubModal.style.display = 'none';
+      });
+    }
+
+    if (paystubModal) {
+      paystubModal.addEventListener('click', (e) => {
+        if (e.target === paystubModal) paystubModal.style.display = 'none';
+      });
+    }
+  });
 
   // =============================================
   // LEAVE MANAGEMENT
