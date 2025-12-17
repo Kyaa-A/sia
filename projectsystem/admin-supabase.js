@@ -42,6 +42,7 @@
   async function init() {
     try {
       await loadAllData();
+      await migrateAnnualToDaily(); // Auto-migrate old annual salary to daily rate
       setupEventListeners();
       setupRealtimeSubscriptions();
       renderAll();
@@ -49,6 +50,66 @@
     } catch (err) {
       console.error('Initialization error:', err);
       if (window.toastError) toastError('Error', 'Failed to load data. Please refresh.');
+    }
+  }
+
+  // Migrate employees with old annual salary (>2000) to daily rate
+  async function migrateAnnualToDaily() {
+    // Migrate active employees
+    const toMigrate = employees.filter(emp => emp.salary > 2000);
+    // Migrate archived employees too
+    const archivedToMigrate = archivedEmployees.filter(emp => emp.salary > 2000);
+
+    const totalToMigrate = toMigrate.length + archivedToMigrate.length;
+    if (totalToMigrate === 0) return;
+
+    console.log(`Found ${totalToMigrate} employees with annual salary to migrate...`);
+    let migratedCount = 0;
+
+    // Migrate active employees
+    for (const emp of toMigrate) {
+      const dailyRate = Math.round((emp.salary / 52 / 6) * 100) / 100;
+      console.log(`Migrating ${emp.name}: ₱${emp.salary} (annual) → ₱${dailyRate} (daily)`);
+
+      try {
+        const { error } = await supabaseClient
+          .from('employees')
+          .update({ salary: dailyRate })
+          .eq('id', emp.id);
+
+        if (!error) {
+          emp.salary = dailyRate;
+          migratedCount++;
+        }
+      } catch (err) {
+        console.error(`Failed to migrate ${emp.name}:`, err);
+      }
+    }
+
+    // Migrate archived employees
+    for (const emp of archivedToMigrate) {
+      const dailyRate = Math.round((emp.salary / 52 / 6) * 100) / 100;
+      console.log(`Migrating archived ${emp.name}: ₱${emp.salary} (annual) → ₱${dailyRate} (daily)`);
+
+      try {
+        const { error } = await supabaseClient
+          .from('archived_employees')
+          .update({ salary: dailyRate })
+          .eq('id', emp.id);
+
+        if (!error) {
+          emp.salary = dailyRate;
+          migratedCount++;
+        }
+      } catch (err) {
+        console.error(`Failed to migrate archived ${emp.name}:`, err);
+      }
+    }
+
+    if (migratedCount > 0) {
+      if (window.toastSuccess) {
+        toastSuccess('Migration Complete', `Converted ${migratedCount} employee(s) from annual salary to daily rate`);
+      }
     }
   }
 
@@ -259,13 +320,13 @@
 
     els.tbody.innerHTML = '';
     filtered.forEach(emp => {
-      const weeklySalary = (emp.salary / 52).toFixed(2);
+      const dailyRate = emp.salary || 510;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${emp.id}</td>
         <td>${emp.name}</td>
         <td>${emp.role}</td>
-        <td>₱${Number(weeklySalary).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td>₱${Number(dailyRate).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
         <td class="actions">
           <button style="background:#6366f1;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer" onclick="showEmployeeQR('${emp.id}', '${emp.name.replace(/'/g, "\\'")}')">QR</button>
           <button style="background:#0ea5e9;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer" onclick="viewEmployeePayslips('${emp.id}', '${emp.name.replace(/'/g, "\\'")}')">Payslips</button>
@@ -441,14 +502,14 @@
     }
 
     archivedEmployees.forEach(emp => {
-      const weeklySalary = (emp.salary / 52).toFixed(2);
+      const dailyRate = emp.salary || 510;
       const archivedDate = emp.archived_at ? new Date(emp.archived_at).toLocaleDateString() : '—';
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${emp.id}</td>
         <td>${emp.name}</td>
         <td>${emp.role}</td>
-        <td>₱${Number(weeklySalary).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td>₱${Number(dailyRate).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
         <td class="muted">Archived ${archivedDate}</td>
         <td class="actions">
           <button class="secondary" onclick="restoreEmployee('${emp.id}')">Restore</button>
@@ -1014,8 +1075,8 @@
     // Total payable days = attendance days + approved leave days (max 6 per week)
     const daysWorked = Math.min(attendanceDays + approvedLeaveDays, 6);
 
-    // Calculate gross pay (daily rate = annual salary / 52 weeks / 6 days)
-    const dailyRate = emp.salary / 52 / 6;
+    // Calculate gross pay (salary field now stores daily rate directly)
+    const dailyRate = emp.salary || 510;
     const grossPay = daysWorked * dailyRate;
 
     // Get statutory deductions
@@ -1448,7 +1509,7 @@
 
     const name = document.getElementById('empName').value.trim();
     const role = document.getElementById('empRole').value.trim();
-    const salary = parseFloat(document.getElementById('empSalary').value) || 159120;
+    const salary = parseFloat(document.getElementById('empSalary').value) || 510; // Daily rate
     const sss = parseFloat(document.getElementById('empSSS').value) || 300;
     const philhealth = parseFloat(document.getElementById('empPhilhealth').value) || 250;
     const pagibig = parseFloat(document.getElementById('empPagibig').value) || 200;
@@ -1467,12 +1528,12 @@
       return;
     }
     if (salary < 0) {
-      if (window.toastError) toastError('Error', 'Salary cannot be negative');
+      if (window.toastError) toastError('Error', 'Daily rate cannot be negative');
       return;
     }
 
     // Warn if total deductions seem too high relative to weekly salary
-    const weeklyGross = salary / 52;
+    const weeklyGross = salary * 6; // Daily rate × 6 days
     const totalDeductions = sss + philhealth + pagibig;
     if (totalDeductions > weeklyGross * 0.5) {
       if (!confirm(`Warning: Total statutory deductions (₱${totalDeductions.toLocaleString()}) exceed 50% of weekly gross (₱${weeklyGross.toFixed(2)}). Continue anyway?`)) {
@@ -1984,9 +2045,9 @@
     doc.setFontSize(11);
     doc.text(payslip.employee_id, pageWidth / 2, y, { align: 'center' });
 
-    // Rate per day (annual salary / 52 weeks / 6 days)
+    // Rate per day (salary field now stores daily rate directly)
     y += 10;
-    const dailyRate = emp.salary ? (emp.salary / 52 / 6) : 0;
+    const dailyRate = emp.salary || 510;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });

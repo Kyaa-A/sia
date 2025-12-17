@@ -230,7 +230,8 @@
     if (idEl) idEl.textContent = `ID: ${currentEmployee.id}`;
     if (usernameEl) usernameEl.textContent = currentEmployee.name;
     if (salaryEl) {
-      const weeklySalary = (currentEmployee.salary / 52).toFixed(2);
+      const dailyRate = currentEmployee.salary || 510;
+      const weeklySalary = dailyRate * 6;
       salaryEl.textContent = `₱${Number(weeklySalary).toLocaleString(undefined, {minimumFractionDigits: 2})} / week`;
     }
 
@@ -607,9 +608,9 @@
     doc.setFontSize(11);
     doc.text(currentEmployee.id, pageWidth / 2, y, { align: 'center' });
 
-    // Rate per day (annual salary / 52 weeks / 6 days)
+    // Rate per day (salary field now stores daily rate directly)
     y += 10;
-    const dailyRate = currentEmployee.salary ? (currentEmployee.salary / 52 / 6) : 0;
+    const dailyRate = currentEmployee.salary || 510;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });
