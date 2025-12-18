@@ -55,8 +55,12 @@
                 <div class="muted" id="empAttendanceId" style="margin-top:6px"> </div>
               </div>
             </div>
-            <!-- Time In / Time Out buttons removed from employee view -->
-            <!-- Download / Request actions removed from employee view per request -->
+            <div style="margin-top:16px">
+              <button onclick="showMyQR()" style="background:#6366f1;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:8px">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                View My QR Code
+              </button>
+            </div>
           </div>
 
           <div class="card section" style="margin-top:12px">
@@ -204,10 +208,33 @@
     </div>
   </div>
 
+  <!-- Employee QR Code Modal -->
+  <div id="myQrCodeModal" class="modal-backdrop" role="dialog" aria-hidden="true" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal" style="max-width:400px;width:95%;text-align:center">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0">My QR Code</h3>
+        <button onclick="document.getElementById('myQrCodeModal').style.display='none'" class="secondary" style="padding:6px 12px">Close</button>
+      </div>
+      <div style="margin-bottom:16px">
+        <div id="myQrEmployeeName" style="font-weight:600;font-size:18px;color:#1e3a5f;margin-bottom:4px"></div>
+        <div id="myQrEmployeeId" style="color:#6b7280;font-size:14px"></div>
+      </div>
+      <div id="myQrCodeContainer" style="background:#fff;padding:20px;border-radius:12px;display:inline-block;margin-bottom:16px">
+        <!-- QR Code will be rendered here -->
+      </div>
+      <p style="color:#6b7280;font-size:13px;margin-bottom:16px">Scan this QR code at the Time Clock Kiosk to clock in/out</p>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button onclick="downloadMyQR()" style="background:#10b981;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600">Download QR</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Supabase SDK -->
   <script src="supabase.min.js"></script>
   <!-- jsPDF for PDF generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- QR Code generation -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="supabase-config.js"></script>
   <script src="supabase-db.js"></script>
   <script src="shared-utils.js"></script>

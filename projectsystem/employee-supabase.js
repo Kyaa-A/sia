@@ -679,6 +679,139 @@
   };
 
   // =============================================
+  // QR CODE (Same format as admin side)
+  // =============================================
+  window.showMyQR = function() {
+    if (!currentEmployee) {
+      if (window.toastError) toastError('Error', 'Employee data not loaded');
+      return;
+    }
+
+    const modal = document.getElementById('myQrCodeModal');
+    const container = document.getElementById('myQrCodeContainer');
+    const nameEl = document.getElementById('myQrEmployeeName');
+    const idEl = document.getElementById('myQrEmployeeId');
+
+    if (!modal || !container) return;
+
+    // Update labels
+    if (nameEl) nameEl.textContent = currentEmployee.name;
+    if (idEl) idEl.textContent = `ID: ${currentEmployee.id}`;
+
+    // Clear previous QR
+    container.innerHTML = '';
+
+    // Generate QR code with employee ID (same format as admin)
+    const qrData = `C4S-EMP-${currentEmployee.id}`;
+
+    try {
+      // Create QR code using qrcodejs library
+      new QRCode(container, {
+        text: qrData,
+        width: 200,
+        height: 200,
+        colorDark: '#1e3a5f',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    } catch (err) {
+      console.error('QR generation error:', err);
+      container.innerHTML = '<p style="color:#ef4444">Failed to generate QR code</p>';
+    }
+
+    modal.style.display = 'flex';
+  };
+
+  // Download QR code as image WITH employee name and ID (same format as admin)
+  window.downloadMyQR = function() {
+    if (!currentEmployee) {
+      if (window.toastError) toastError('Error', 'Employee data not loaded');
+      return;
+    }
+
+    const container = document.getElementById('myQrCodeContainer');
+    if (!container) {
+      if (window.toastError) toastError('Error', 'QR container not found');
+      return;
+    }
+
+    const img = container.querySelector('img');
+    const qrCanvas = container.querySelector('canvas');
+
+    // Get QR image source
+    let qrSrc = '';
+    if (img && img.src) {
+      qrSrc = img.src;
+    } else if (qrCanvas) {
+      qrSrc = qrCanvas.toDataURL('image/png');
+    }
+
+    if (!qrSrc) {
+      if (window.toastError) toastError('Error', 'No QR code to download');
+      return;
+    }
+
+    // Function to create the download image (same format as admin)
+    function createDownloadImage(qrImage) {
+      const downloadCanvas = document.createElement('canvas');
+      const ctx = downloadCanvas.getContext('2d');
+
+      const qrSize = 256;
+      const padding = 30;
+      const headerHeight = 50;
+      const footerHeight = 70;
+
+      downloadCanvas.width = qrSize + (padding * 2);
+      downloadCanvas.height = qrSize + headerHeight + footerHeight;
+
+      // White background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, downloadCanvas.width, downloadCanvas.height);
+
+      // Draw employee name at top
+      ctx.fillStyle = '#1e3a5f';
+      ctx.font = 'bold 20px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(currentEmployee.name || 'Employee', downloadCanvas.width / 2, 35);
+
+      // Draw QR code
+      ctx.drawImage(qrImage, padding, headerHeight, qrSize, qrSize);
+
+      // Draw employee ID below QR
+      ctx.fillStyle = '#374151';
+      ctx.font = 'bold 18px Arial, sans-serif';
+      ctx.fillText(`ID: ${currentEmployee.id}`, downloadCanvas.width / 2, headerHeight + qrSize + 25);
+
+      // Draw company name at bottom
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '14px Arial, sans-serif';
+      ctx.fillText('C4S Food Solution', downloadCanvas.width / 2, headerHeight + qrSize + 50);
+
+      // Download
+      const link = document.createElement('a');
+      link.download = `QR-${currentEmployee.name || 'Employee'}-${currentEmployee.id}.png`;
+      link.href = downloadCanvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      if (window.toastSuccess) toastSuccess('Success', 'QR code downloaded');
+    }
+
+    // Create new image from QR
+    const qrImg = new Image();
+    qrImg.crossOrigin = 'anonymous';
+
+    qrImg.onload = function() {
+      createDownloadImage(qrImg);
+    };
+    qrImg.onerror = function() {
+      if (window.toastError) toastError('Error', 'Failed to process QR code');
+    };
+    qrImg.src = qrSrc;
+  };
+
+  // =============================================
   // LOGOUT
   // =============================================
   window.logout = function() {
