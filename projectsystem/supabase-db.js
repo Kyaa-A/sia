@@ -89,6 +89,7 @@ const db = {
 
   /**
    * Create new employee
+   * Note: salary is daily rate (default P510), deductions are fixed monthly values
    */
   async createEmployee(employee) {
     const { data, error } = await supabaseClient
@@ -100,10 +101,10 @@ const db = {
         username: employee.username,
         password_hash: employee.password,
         role: employee.role,
-        salary: employee.salary || 159120,
-        sss_deduction: employee.sss || 300,
-        philhealth_deduction: employee.philhealth || 250,
-        pagibig_deduction: employee.pagibig || 200,
+        salary: employee.salary || 510,  // Daily rate (P510)
+        sss_deduction: 300,              // Fixed EE deduction
+        philhealth_deduction: 250,       // Fixed EE deduction
+        pagibig_deduction: 200,          // Fixed EE deduction
         status: 'active'
       }])
       .select()
@@ -540,7 +541,7 @@ const db = {
   },
 
   /**
-   * Create or update payslip
+   * Create or update payslip (Monthly - Fixed deductions: 750)
    */
   async upsertPayslip(payslip) {
     const { data, error } = await supabaseClient
@@ -549,16 +550,15 @@ const db = {
         employee_id: payslip.employeeId,
         week_start: payslip.weekStart,
         week_end: payslip.weekEnd,
-        period_type: payslip.periodType || 'weekly',
+        period_type: payslip.periodType || 'monthly',
         gross_pay: payslip.grossPay,
-        sss: payslip.sss || 0,
-        philhealth: payslip.philhealth || 0,
-        pagibig: payslip.pagibig || 0,
+        sss: payslip.sss || 300,
+        philhealth: payslip.philhealth || 250,
+        pagibig: payslip.pagibig || 200,
         late_deduction: payslip.lateDeduction || 0,
         total_deductions: payslip.totalDeductions || 0,
         net_pay: payslip.netPay,
-        worked_hours: payslip.workedHours || 0,
-        payable_hours: payslip.payableHours || 0,
+        days_worked: payslip.daysWorked || 0,
         late_minutes: payslip.lateMinutes || 0,
         status: payslip.status || 'Pending'
       }], { onConflict: 'employee_id,week_start' })

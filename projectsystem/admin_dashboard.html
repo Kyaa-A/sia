@@ -322,57 +322,46 @@
         <div style="max-height:600px;overflow:auto">
           <div style="margin-bottom:10px;display:flex;flex-direction:column;gap:8px;align-items:stretch">
   
-            <!-- Inline Run Payroll form (moved from modal) -->
+            <!-- Inline Run Payroll form (Monthly Only) -->
             <div id="payrollInlineForm" style="background:#ffffff;padding:12px;border-radius:8px;border:1px solid #eef2f7;display:flex;flex-direction:column;gap:12px">
               <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-                <div style="display:flex;flex-direction:column">
-                  <label style="font-weight:600">Pay Period</label>
-                  <select id="payrollPeriodType" style="padding:8px;min-width:120px">
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </div>
                 <div style="display:flex;flex-direction:column">
                   <label style="font-weight:600">Employee</label>
                   <select id="payrollInlineEmployeeSelect" style="padding:8px;min-width:220px"></select>
                 </div>
-                <div id="weekSelectorContainer" style="display:flex;flex-direction:column">
-                  <label style="font-weight:600">Week</label>
-                  <select id="payrollInlineWeekSelect" style="padding:8px;min-width:160px"></select>
-                </div>
-                <div id="monthSelectorContainer" style="display:none;flex-direction:column">
+                <div id="monthSelectorContainer" style="display:flex;flex-direction:column">
                   <label style="font-weight:600">Month</label>
                   <select id="payrollInlineMonthSelect" style="padding:8px;min-width:160px"></select>
                 </div>
-                <div id="payrollRateNote" style="margin-left:auto;color:#6b7280;font-size:13px">Weekly: Daily Rate × 6 days</div>
+                <div id="payrollRateNote" style="margin-left:auto;color:#6b7280;font-size:13px">Monthly: Daily Rate × No. of Days</div>
               </div>
 
               <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-                <div><strong>Days:</strong> <span id="payrollInlineDays">0</span></div>
-                <div><strong>Hours:</strong> <span id="payrollInlineHours">0</span></div>
+                <div><strong>No. of Days:</strong> <span id="payrollInlineDays">0</span></div>
                 <div><strong>Gross:</strong> <span id="payrollInlineGross">₱0.00</span></div>
-                <div><strong>Statutory:</strong> <span id="payrollInlineStat">₱0.00</span></div>
+                <div><strong>Deductions:</strong> <span id="payrollInlineStat">₱0.00</span></div>
                 <div><strong>Net:</strong> <span id="payrollInlineNet">₱0.00</span></div>
               </div>
 
               <div id="payrollInlineNotice" style="margin-top:4px;color:#b91c1c;font-weight:700"></div>
 
               <div style="border-top:1px solid #eef2f7;padding-top:6px">
-                <h4 style="margin:6px 0">Late / Deductions</h4>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <h4 style="margin:6px 0">Deductions</h4>
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
                   <div style="display:flex;flex-direction:column">
-                    <label style="font-size:13px">Late Hours (h)</label>
-                    <input id="payrollInlineLateHours" type="number" min="0" step="0.25" style="padding:6px;width:120px" value="0" />
+                    <label style="font-size:13px">Late (hours)</label>
+                    <input id="payrollInlineLateHours" type="number" min="0" step="0.25" style="padding:6px;width:100px" value="0" />
                   </div>
                   <div style="display:flex;flex-direction:column">
-                    <label style="font-size:13px">Late Minutes (m)</label>
-                    <input id="payrollInlineLateMinutes" type="number" min="0" max="59" style="padding:6px;width:120px" value="0" />
+                    <label style="font-size:13px">Late (mins)</label>
+                    <input id="payrollInlineLateMinutes" type="number" min="0" max="59" style="padding:6px;width:100px" value="0" />
                   </div>
-                  <div style="margin-left:12px;display:flex;flex-direction:column">
+                  <div style="display:flex;flex-direction:column">
                     <label style="font-size:13px">Late Deduction</label>
-                    <div id="payrollInlineLateDeduction" style="padding:6px;color:#111;font-weight:700">₱0.00</div>
+                    <div id="payrollInlineLateDeduction" style="padding:6px;color:#ef4444;font-weight:700">₱0.00</div>
                   </div>
                 </div>
+                <div style="margin-top:8px;font-size:12px;color:#6b7280">Fixed deductions: SSS ₱300 + PhilHealth ₱250 + Pag-IBIG ₱200 = <strong>₱750</strong></div>
               </div>
 
               <div style="display:flex;justify-content:flex-end;gap:8px">
@@ -439,47 +428,47 @@
 
   </div>
 
-  <!-- Modal -->
+  <!-- Modal (Monthly Payroll) -->
   <div id="payrollModal" class="modal-backdrop" role="dialog" aria-hidden="true" style="display:none">
     <div class="modal" role="document" style="max-width:600px;width:95%">
-      <h3>Run Payroll</h3>
+      <h3>Run Monthly Payroll</h3>
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
         <div style="display:flex;flex-direction:column">
           <label style="font-weight:600">Employee</label>
           <select id="payrollEmployeeSelect" style="padding:8px;min-width:220px"></select>
         </div>
         <div style="display:flex;flex-direction:column;margin-left:12px">
-          <label style="font-weight:600">Week</label>
-          <select id="payrollWeekSelect" style="padding:8px;min-width:160px"></select>
+          <label style="font-weight:600">Month</label>
+          <select id="payrollMonthSelect" style="padding:8px;min-width:160px"></select>
         </div>
-        <div style="margin-left:auto;color:#6b7280;font-size:13px">Each day = ₱510 (8h)</div>
+        <div style="margin-left:auto;color:#6b7280;font-size:13px">Daily Rate × No. of Days</div>
       </div>
       <div style="border-top:1px solid #eef2f7;padding-top:12px;margin-bottom:12px">
         <div id="payrollResult" style="display:flex;gap:16px;align-items:center">
-          <div><strong>Days:</strong> <span id="payrollDays">0</span></div>
-          <div><strong>Hours:</strong> <span id="payrollHours">0</span></div>
+          <div><strong>No. of Days:</strong> <span id="payrollDays">0</span></div>
           <div><strong>Gross:</strong> <span id="payrollGross">₱0.00</span></div>
-          <div><strong>Statutory:</strong> <span id="payrollStat">₱0.00</span></div>
+          <div><strong>Deductions:</strong> <span id="payrollStat">₱0.00</span></div>
           <div><strong>Net:</strong> <span id="payrollNet">₱0.00</span></div>
         </div>
         <div id="payrollNotice" style="margin-top:8px;color:#b91c1c;font-weight:700"></div>
       </div>
       <div style="border-top:1px solid #eef2f7;padding-top:12px;margin-bottom:12px">
-        <h4 style="margin:6px 0">Late / Deductions</h4>
-        <div style="display:flex;gap:8px;align-items:center">
+        <h4 style="margin:6px 0">Deductions</h4>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <div style="display:flex;flex-direction:column">
-            <label style="font-size:13px">Late Hours (h)</label>
-            <input id="payrollLateHours" type="number" min="0" step="0.25" style="padding:6px;width:120px" value="0" />
+            <label style="font-size:13px">Late (hours)</label>
+            <input id="payrollLateHours" type="number" min="0" step="0.25" style="padding:6px;width:100px" value="0" />
           </div>
           <div style="display:flex;flex-direction:column">
-            <label style="font-size:13px">Late Minutes (m)</label>
-            <input id="payrollLateMinutes" type="number" min="0" max="59" style="padding:6px;width:120px" value="0" />
+            <label style="font-size:13px">Late (mins)</label>
+            <input id="payrollLateMinutes" type="number" min="0" max="59" style="padding:6px;width:100px" value="0" />
           </div>
-          <div style="margin-left:12px;display:flex;flex-direction:column">
+          <div style="display:flex;flex-direction:column">
             <label style="font-size:13px">Late Deduction</label>
-            <div id="payrollLateDeduction" style="padding:6px;color:#111;font-weight:700">₱0.00</div>
+            <div id="payrollLateDeduction" style="padding:6px;color:#ef4444;font-weight:700">₱0.00</div>
           </div>
         </div>
+        <div style="margin-top:8px;font-size:12px;color:#6b7280">Fixed deductions: SSS ₱300 + PhilHealth ₱250 + Pag-IBIG ₱200 = <strong>₱750</strong></div>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:8px">
         <button id="payrollCancel" class="secondary">Cancel</button>

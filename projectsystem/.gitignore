@@ -33,3 +33,10 @@ node_modules/
 # Build output
 dist/
 build/
+
+# Sensitive files with database credentials
+run-migration.js
+verify-database.js
+migrate-to-monthly.sql
+*.secret.*
+*.credentials.*

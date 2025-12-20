@@ -226,9 +226,18 @@
   <script src="supabase.min.js"></script>
   <script src="supabase-config.js"></script>
   <script>
+    // Use the supabaseClient from supabase-config.js
+    var supabase = window.supabaseClient;
     var logEl = document.getElementById('logOutput');
 
+    // Check if Supabase is properly initialized
+    if (!supabase) {
+      alert('Supabase client not initialized. Please refresh the page.');
+      console.error('supabaseClient is not available');
+    }
+
     // Test employees data
+    // Note: salary is DAILY RATE (P510), deductions are fixed monthly EE values
     var testEmployees = [
       {
         id: '1001',
@@ -237,7 +246,7 @@
         username: 'maria.santos',
         password_hash: 'test123',
         role: 'Cashier',
-        salary: 159120,
+        salary: 510,  // Daily rate
         sss_deduction: 300,
         philhealth_deduction: 250,
         pagibig_deduction: 200,
@@ -250,7 +259,7 @@
         username: 'juan.cruz',
         password_hash: 'test123',
         role: 'Delivery Driver',
-        salary: 159120,
+        salary: 510,  // Daily rate
         sss_deduction: 300,
         philhealth_deduction: 250,
         pagibig_deduction: 200,
@@ -263,7 +272,7 @@
         username: 'ana.reyes',
         password_hash: 'test123',
         role: 'Packer',
-        salary: 159120,
+        salary: 510,  // Daily rate
         sss_deduction: 300,
         philhealth_deduction: 250,
         pagibig_deduction: 200,
@@ -276,7 +285,7 @@
         username: 'pedro.garcia',
         password_hash: 'test123',
         role: 'Warehouse Staff',
-        salary: 159120,
+        salary: 510,  // Daily rate
         sss_deduction: 300,
         philhealth_deduction: 250,
         pagibig_deduction: 200,
@@ -289,9 +298,9 @@
         username: 'rosa.martinez',
         password_hash: 'test123',
         role: 'Manager',
-        salary: 200000,
-        sss_deduction: 400,
-        philhealth_deduction: 300,
+        salary: 510,  // Daily rate (same for all)
+        sss_deduction: 300,
+        philhealth_deduction: 250,
         pagibig_deduction: 200,
         status: 'active'
       }
@@ -499,46 +508,52 @@
         var today = new Date();
         var payslips = [];
 
-        // Current week and last week
-        for (var week = 0; week < 2; week++) {
-          var weekDate = new Date(today);
-          weekDate.setDate(weekDate.getDate() - (week * 7));
-          var weekStart = getWeekStart(weekDate);
-          var weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekEnd.getDate() + 6);
+        // Current month and last month (Monthly payroll)
+        for (var month = 0; month < 2; month++) {
+          var monthDate = new Date(today.getFullYear(), today.getMonth() - month, 1);
+          var monthStart = monthDate.toISOString().split('T')[0];
+          var monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+          var monthEndStr = monthEnd.toISOString().split('T')[0];
 
           for (var i = 0; i < employees.length; i++) {
             var emp = employees[i];
-            var weeklySalary = Math.round((emp.salary || 159120) / 52);
-            var sss = emp.sss_deduction || 300;
-            var philhealth = emp.philhealth_deduction || 250;
-            var pagibig = emp.pagibig_deduction || 200;
-            var totalDeductions = sss + philhealth + pagibig;
-            var netPay = weeklySalary - totalDeductions;
+            // Monthly payroll: Daily rate (510) × days worked
+            var dailyRate = emp.salary || 510;
+            var daysWorked = 22;  // Typical working days in a month
+            var grossPay = dailyRate * daysWorked;
+            
+            // Fixed deductions (EE): SSS 300 + PhilHealth 250 + Pag-IBIG 200 = 750
+            var sss = 300;
+            var philhealth = 250;
+            var pagibig = 200;
+            var totalDeductions = sss + philhealth + pagibig;  // = 750
+            var netPay = grossPay - totalDeductions;
 
             payslips.push({
               employee_id: emp.id,
-              week_start: weekStart,
-              week_end: weekEnd.toISOString().split('T')[0],
-              gross_pay: weeklySalary,
+              week_start: monthStart,
+              week_end: monthEndStr,
+              period_type: 'monthly',
+              days_worked: daysWorked,
+              gross_pay: grossPay,
               sss: sss,
               philhealth: philhealth,
               pagibig: pagibig,
               late_deduction: 0,
+              late_minutes: 0,
               total_deductions: totalDeductions,
               net_pay: netPay,
-              worked_hours: 48,
               status: 'Approved'
             });
           }
         }
 
-        log('Generated ' + payslips.length + ' payslips');
+        log('Generated ' + payslips.length + ' monthly payslips');
 
         var { error: insertError } = await supabase.from('payslips').upsert(payslips, { onConflict: 'employee_id,week_start' });
         if (insertError) throw insertError;
 
-        showStatus('Seeded ' + payslips.length + ' payslips!', 'success');
+        showStatus('Seeded ' + payslips.length + ' monthly payslips!', 'success');
         refreshCounts();
       } catch (e) {
         log('Error: ' + e.message);

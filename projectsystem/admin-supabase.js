@@ -763,7 +763,8 @@
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
         <div><span style="color:#6b7280;font-size:12px">Employee</span><br><strong>${emp.name || 'Unknown'}</strong></div>
         <div><span style="color:#6b7280;font-size:12px">Employee ID</span><br><strong>${payslip.employee_id}</strong></div>
-        <div><span style="color:#6b7280;font-size:12px">Week Period</span><br><strong>${weekStart} to ${weekEnd}</strong></div>
+        <div><span style="color:#6b7280;font-size:12px">Pay Period</span><br><strong>${weekStart} to ${weekEnd}</strong></div>
+        <div><span style="color:#6b7280;font-size:12px">Days Worked</span><br><strong>${payslip.days_worked || 0}</strong></div>
         <div><span style="color:#6b7280;font-size:12px">Status</span><br><strong style="color:${payslip.status === 'Approved' ? '#10b981' : payslip.status === 'Rejected' ? '#ef4444' : '#f59e0b'}">${payslip.status || 'Pending'}</strong></div>
       </div>
     `;
@@ -890,18 +891,18 @@
         content.innerHTML = tableHTML;
       }
 
-      // Summary section
-      const gross = Number(payslip.gross_pay) || 0;
-      const net = Number(payslip.net_pay) || 0;
-      const sss = Number(payslip.sss) || 0;
-      const philhealth = Number(payslip.philhealth) || 0;
-      const pagibig = Number(payslip.pagibig) || 0;
+      // Summary section - Admin sees actual data, receipt shows simplified
+      const daysWorked = Number(payslip.days_worked) || 0;
       const lateDeduction = Number(payslip.late_deduction) || 0;
-      const totalDeductions = sss + philhealth + pagibig + lateDeduction;
-      const workedHours = Number(payslip.worked_hours) || 0;
       const lateMinutes = Number(payslip.late_minutes) || 0;
 
-      // Format late minutes nicely
+      // Admin calculation (actual)
+      const dailyRate = 510;
+      const actualGross = daysWorked * dailyRate;
+      const FIXED_DEDUCTIONS = 750;
+      const actualNet = actualGross - FIXED_DEDUCTIONS - lateDeduction;
+
+      // Format late minutes nicely for admin view
       let lateDisplay = '0m';
       if (lateMinutes > 0) {
         if (lateMinutes >= 60) {
@@ -912,21 +913,19 @@
       }
 
       summary.innerHTML = `
-        <div style="margin-bottom:8px;font-size:12px;font-weight:600;text-transform:uppercase;opacity:0.7">Payslip Summary</div>
+        <div style="margin-bottom:8px;font-size:12px;font-weight:600;text-transform:uppercase;opacity:0.7">Payslip Summary (Monthly)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px">
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Hours</span><span style="font-weight:600">${workedHours.toFixed(1)}h</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Days Worked</span><span style="font-weight:600">${daysWorked}</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Late</span><span style="font-weight:600;color:${lateMinutes > 0 ? '#fca5a5' : '#6ee7b7'}">${lateDisplay}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Gross</span><span style="font-weight:600">₱${gross.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">SSS</span><span style="color:#fca5a5">-₱${sss.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">PhilHealth</span><span style="color:#fca5a5">-₱${philhealth.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Pag-IBIG</span><span style="color:#fca5a5">-₱${pagibig.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Late Ded.</span><span style="color:#fca5a5">-₱${lateDeduction.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Total Ded.</span><span style="color:#fca5a5">-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Late (₱)</span><span style="color:#fca5a5">₱${lateDeduction.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Gross</span><span style="font-weight:600">₱${actualGross.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="opacity:0.8">Fixed Ded.</span><span style="color:#fca5a5">-₱${FIXED_DEDUCTIONS.toLocaleString(undefined, {minimumFractionDigits:2})}</span></div>
         </div>
         <div style="margin-top:12px;padding-top:12px;border-top:2px solid rgba(255,255,255,0.3);display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:16px;font-weight:600">NET PAY</span>
-          <span style="font-size:24px;font-weight:700;color:#10b981">₱${net.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
+          <span style="font-size:24px;font-weight:700;color:#10b981">₱${Math.max(0, actualNet).toLocaleString(undefined, {minimumFractionDigits:2})}</span>
         </div>
+        <div style="margin-top:8px;font-size:11px;opacity:0.7">Receipt shows: 6 days, Late ₱${lateDeduction.toFixed(2)}</div>
       `;
 
       // Actions based on status
@@ -975,21 +974,14 @@
   };
 
   // =============================================
-  // PAYROLL
+  // PAYROLL (Monthly Only)
   // =============================================
-  let payrollWeekOffset = 0;
-  let currentPayPeriodType = 'weekly'; // 'weekly' or 'monthly'
 
   function renderPayroll() {
     const employeeSelect = document.getElementById('payrollInlineEmployeeSelect');
-    const weekSelect = document.getElementById('payrollInlineWeekSelect');
     const monthSelect = document.getElementById('payrollInlineMonthSelect');
-    const periodTypeSelect = document.getElementById('payrollPeriodType');
-    const weekContainer = document.getElementById('weekSelectorContainer');
-    const monthContainer = document.getElementById('monthSelectorContainer');
-    const rateNote = document.getElementById('payrollRateNote');
 
-    if (!employeeSelect || !weekSelect) return;
+    if (!employeeSelect || !monthSelect) return;
 
     // Populate employee dropdown
     employeeSelect.innerHTML = '<option value="">Select Employee</option>';
@@ -997,28 +989,16 @@
       employeeSelect.innerHTML += `<option value="${emp.id}">${emp.name} (${emp.id})</option>`;
     });
 
-    // Populate week dropdown (last 8 weeks)
-    weekSelect.innerHTML = '';
-    for (let i = 0; i < 8; i++) {
-      const weekStart = getPayrollWeekStart(-i);
-      const weekEnd = getPayrollWeekEnd(weekStart);
-      const label = formatPayrollWeek(weekStart, weekEnd);
-      const isCurrentWeek = i === 0 ? ' (Current)' : '';
-      weekSelect.innerHTML += `<option value="${weekStart}">${label}${isCurrentWeek}</option>`;
-    }
-
     // Populate month dropdown (last 6 months)
-    if (monthSelect) {
-      monthSelect.innerHTML = '';
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      const now = new Date();
-      for (let i = 0; i < 6; i++) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthStart = formatDateLocal(date); // Use local timezone
-        const label = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-        const isCurrent = i === 0 ? ' (Current)' : '';
-        monthSelect.innerHTML += `<option value="${monthStart}">${label}${isCurrent}</option>`;
-      }
+    monthSelect.innerHTML = '';
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const now = new Date();
+    for (let i = 0; i < 6; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthStart = formatDateLocal(date);
+      const label = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+      const isCurrent = i === 0 ? ' (Current)' : '';
+      monthSelect.innerHTML += `<option value="${monthStart}">${label}${isCurrent}</option>`;
     }
 
     // Reset calculation display
@@ -1027,23 +1007,7 @@
     // Setup event listeners if not already setup
     if (!employeeSelect.dataset.listenersAttached) {
       employeeSelect.addEventListener('change', () => calculatePayroll(true));
-      weekSelect.addEventListener('change', () => calculatePayroll(true));
-      if (monthSelect) monthSelect.addEventListener('change', () => calculatePayroll(true));
-
-      // Pay period type toggle
-      if (periodTypeSelect) {
-        periodTypeSelect.addEventListener('change', (e) => {
-          currentPayPeriodType = e.target.value;
-          if (weekContainer) weekContainer.style.display = currentPayPeriodType === 'weekly' ? 'flex' : 'none';
-          if (monthContainer) monthContainer.style.display = currentPayPeriodType === 'monthly' ? 'flex' : 'none';
-          if (rateNote) {
-            rateNote.textContent = currentPayPeriodType === 'weekly'
-              ? 'Weekly: Daily Rate × 6 days'
-              : 'Monthly: Daily Rate × days worked';
-          }
-          calculatePayroll(true);
-        });
-      }
+      monthSelect.addEventListener('change', () => calculatePayroll(true));
 
       const lateHoursInput = document.getElementById('payrollInlineLateHours');
       const lateMinutesInput = document.getElementById('payrollInlineLateMinutes');
@@ -1111,7 +1075,6 @@
   function resetPayrollCalculation() {
     const els = {
       days: document.getElementById('payrollInlineDays'),
-      hours: document.getElementById('payrollInlineHours'),
       gross: document.getElementById('payrollInlineGross'),
       stat: document.getElementById('payrollInlineStat'),
       net: document.getElementById('payrollInlineNet'),
@@ -1122,7 +1085,6 @@
     };
 
     if (els.days) els.days.textContent = '0';
-    if (els.hours) els.hours.textContent = '0';
     if (els.gross) els.gross.textContent = '₱0.00';
     if (els.stat) els.stat.textContent = '₱0.00';
     if (els.net) els.net.textContent = '₱0.00';
@@ -1134,13 +1096,9 @@
 
   function calculatePayroll(autoPopulateLate = true) {
     const employeeSelect = document.getElementById('payrollInlineEmployeeSelect');
-    const weekSelect = document.getElementById('payrollInlineWeekSelect');
     const monthSelect = document.getElementById('payrollInlineMonthSelect');
     const employeeId = employeeSelect?.value;
-
-    // Get period start based on pay period type
-    const isMonthly = currentPayPeriodType === 'monthly';
-    const periodStart = isMonthly ? monthSelect?.value : weekSelect?.value;
+    const periodStart = monthSelect?.value;
 
     if (!employeeId || !periodStart) {
       resetPayrollCalculation();
@@ -1150,11 +1108,11 @@
     const emp = employees.find(e => e.id === employeeId);
     if (!emp) return;
 
-    // Get period end based on pay period type
-    const periodEnd = isMonthly ? getMonthEnd(periodStart) : getPayrollWeekEnd(periodStart);
+    // Get period end (monthly only)
+    const periodEnd = getMonthEnd(periodStart);
 
-    // Max days for the period (6 for weekly, actual working days for monthly)
-    const maxDaysInPeriod = isMonthly ? getWorkingDaysInMonth(periodStart) : 6;
+    // Max days for the month (Mon-Sat, exclude Sundays)
+    const maxDaysInPeriod = getWorkingDaysInMonth(periodStart);
 
     // Get attendance for this employee for this period
     const periodAttendance = attendance.filter(a => {
@@ -1193,31 +1151,29 @@
       return total + leaveDaysCount;
     }, 0);
 
-    // Calculate days worked and hours
+    // Calculate days worked
     const attendanceDays = periodAttendance.length;
-    const totalHours = periodAttendance.reduce((sum, a) => sum + (a.worked_hours || 0), 0);
     const totalLateMinutes = periodAttendance.reduce((sum, a) => sum + (a.late_minutes || 0), 0);
 
     // Total payable days (capped at max days for period)
     const daysWorked = Math.min(attendanceDays + approvedLeaveDays, maxDaysInPeriod);
 
-    // Calculate gross pay (salary field now stores daily rate directly)
+    // Calculate gross pay: Daily Rate × No. of Days
     const dailyRate = emp.salary || 510;
     const usingDefaultRate = !emp.salary;
     const grossPay = daysWorked * dailyRate;
 
-    // Get statutory deductions (multiply by 4 for monthly)
-    const deductionMultiplier = isMonthly ? 4 : 1;
-    const sss = (emp.sss_deduction || 300) * deductionMultiplier;
-    const philhealth = (emp.philhealth_deduction || 250) * deductionMultiplier;
-    const pagibig = (emp.pagibig_deduction || 200) * deductionMultiplier;
+    // Get statutory deductions (EE - Employee contributions, monthly values)
+    const sss = emp.sss_deduction || 300;
+    const philhealth = emp.philhealth_deduction || 250;
+    const pagibig = emp.pagibig_deduction || 200;
     const statutoryDeductions = sss + philhealth + pagibig;
 
     // Get late input elements
     const lateHoursInput = document.getElementById('payrollInlineLateHours');
     const lateMinutesInput = document.getElementById('payrollInlineLateMinutes');
 
-    // Auto-populate late hours/minutes from attendance data when employee/week changes
+    // Auto-populate late hours/minutes from attendance data when employee/month changes
     if (autoPopulateLate) {
       const attendanceLateHours = Math.floor(totalLateMinutes / 60);
       const attendanceLateMinutes = totalLateMinutes % 60;
@@ -1226,12 +1182,13 @@
     }
 
     // Use the current input values for calculation (allows manual override)
-    // Validate and clamp late values to reasonable bounds
     let lateHours = parseFloat(lateHoursInput?.value) || 0;
     let lateMinutes = parseFloat(lateMinutesInput?.value) || 0;
-    // Clamp to non-negative and max reasonable values (48 hours = 6 days * 8 hours)
-    lateHours = Math.max(0, Math.min(lateHours, 48));
+
+    // Clamp to non-negative and max reasonable values
+    lateHours = Math.max(0, Math.min(lateHours, 200)); // ~25 days * 8 hours
     lateMinutes = Math.max(0, Math.min(lateMinutes, 59));
+
     // Update inputs if they were clamped
     if (lateHoursInput && parseFloat(lateHoursInput.value) !== lateHours) lateHoursInput.value = lateHours;
     if (lateMinutesInput && parseFloat(lateMinutesInput.value) !== lateMinutes) lateMinutesInput.value = lateMinutes;
@@ -1242,13 +1199,16 @@
     const hourlyRate = dailyRate / 8;
     const lateDeduction = (totalLateMins / 60) * hourlyRate;
 
-    // Net pay
-    const netPay = grossPay - statutoryDeductions - lateDeduction;
+    // Fixed deductions: SSS 300 + PhilHealth 250 + Pag-IBIG 200 = 750
+    const FIXED_DEDUCTIONS = 750;
+    const totalDeductions = FIXED_DEDUCTIONS + lateDeduction;
+
+    // Net pay: Gross - Total Deductions
+    const netPay = grossPay - totalDeductions;
 
     // Update display
     const els = {
       days: document.getElementById('payrollInlineDays'),
-      hours: document.getElementById('payrollInlineHours'),
       gross: document.getElementById('payrollInlineGross'),
       stat: document.getElementById('payrollInlineStat'),
       net: document.getElementById('payrollInlineNet'),
@@ -1261,16 +1221,14 @@
       ? `${daysWorked} (${attendanceDays} work + ${approvedLeaveDays} leave)`
       : `${daysWorked}`;
     if (els.days) els.days.textContent = daysDisplay;
-    if (els.hours) els.hours.textContent = totalHours.toFixed(1);
     if (els.gross) els.gross.textContent = db.formatCurrency(grossPay);
-    if (els.stat) els.stat.textContent = db.formatCurrency(statutoryDeductions);
+    if (els.stat) els.stat.textContent = db.formatCurrency(totalDeductions);
     if (els.net) els.net.textContent = db.formatCurrency(Math.max(0, netPay));
     if (els.lateDeduction) els.lateDeduction.textContent = db.formatCurrency(lateDeduction);
 
     // Check for warnings
     let notice = '';
     let canRunPayroll = true;
-    const periodLabel = isMonthly ? 'month' : 'week';
 
     // Salary warning is important - always show if using default rate
     if (usingDefaultRate) {
@@ -1280,7 +1238,7 @@
     const existingPayslip = payslips.find(p => String(p.employee_id) === String(employeeId) && p.week_start === periodStart);
     if (existingPayslip) {
       if (existingPayslip.status === 'Approved') {
-        notice += `Payslip already APPROVED for this ${periodLabel}. Cannot modify.`;
+        notice += `Payslip already APPROVED for this month. Cannot modify.`;
         canRunPayroll = false;
       } else {
         notice += `Payslip exists (${existingPayslip.status}). Will update.`;
@@ -1293,15 +1251,9 @@
       notice = `⚠️ Deductions exceed gross pay. Net pay will be ₱0.00.`;
       if (usingDefaultRate) notice = `⚠️ No salary set (using ₱510/day). ` + notice;
     }
-    // Overtime notification
-    const maxRegularHours = isMonthly ? maxDaysInPeriod * 8 : 48;
-    if (totalHours > maxRegularHours && !existingPayslip && daysWorked > 0) {
-      const overtimeHours = (totalHours - maxRegularHours).toFixed(1);
-      notice += ` ${overtimeHours}h overtime (regular rate).`;
-    }
     if (els.notice) {
       els.notice.textContent = notice;
-      els.notice.style.color = (netPay < 0 || !canRunPayroll || usingDefaultRate) ? '#dc2626' : (totalHours > maxRegularHours ? '#d97706' : '#6b7280');
+      els.notice.style.color = (netPay < 0 || !canRunPayroll || usingDefaultRate) ? '#dc2626' : '#6b7280';
     }
 
     // Disable/enable confirm button based on whether payroll can be run
@@ -1313,24 +1265,19 @@
     }
 
     // Store calculation data for confirmation
-    // Calculate payable hours (capped based on period type)
-    const maxPayableHours = isMonthly ? maxDaysInPeriod * 8 : 48;
-    const payableHours = Math.min(totalHours, maxPayableHours);
-
+    // Fixed deductions: SSS 300, PhilHealth 250, Pag-IBIG 200
     window._payrollData = {
       employeeId,
       weekStart: periodStart,
       weekEnd: periodEnd,
-      periodType: currentPayPeriodType,
+      periodType: 'monthly',
       grossPay,
-      sss: daysWorked > 0 ? sss : 0,
-      philhealth: daysWorked > 0 ? philhealth : 0,
-      pagibig: daysWorked > 0 ? pagibig : 0,
+      sss: daysWorked > 0 ? 300 : 0,
+      philhealth: daysWorked > 0 ? 250 : 0,
+      pagibig: daysWorked > 0 ? 200 : 0,
       lateDeduction: daysWorked > 0 ? lateDeduction : 0,
-      totalDeductions: daysWorked > 0 ? (statutoryDeductions + lateDeduction) : 0,
+      totalDeductions: daysWorked > 0 ? totalDeductions : 0,
       netPay: daysWorked > 0 ? Math.max(0, netPay) : 0,
-      workedHours: totalHours,
-      payableHours: payableHours,
       lateMinutes: totalLateMins,
       daysWorked
     };
@@ -1339,11 +1286,9 @@
   async function handlePayrollConfirm() {
     const data = window._payrollData;
     if (!data || !data.employeeId) {
-      if (window.toastError) toastError('Error', 'Please select an employee and period first');
+      if (window.toastError) toastError('Error', 'Please select an employee and month first');
       return;
     }
-
-    const periodLabel = data.periodType === 'monthly' ? 'month' : 'week';
 
     // FRESH DATABASE CHECK: Prevent race conditions and check approved status
     try {
@@ -1355,21 +1300,11 @@
 
       if (checkError) throw checkError;
 
-      // Check for approved payslip (any period type)
+      // Check for approved payslip
       const approvedPayslip = freshPayslips?.find(p => p.status === 'Approved');
       if (approvedPayslip) {
         if (window.toastError) toastError('Error', 'Cannot modify an approved payslip. Please reject it first if changes are needed.');
         return;
-      }
-
-      // Check for conflicting period type (e.g., trying to create monthly when weekly exists)
-      const conflictingPayslip = freshPayslips?.find(p => p.period_type && p.period_type !== data.periodType);
-      if (conflictingPayslip) {
-        const existingType = conflictingPayslip.period_type === 'monthly' ? 'Monthly' : 'Weekly';
-        const newType = data.periodType === 'monthly' ? 'Monthly' : 'Weekly';
-        if (!confirm(`A ${existingType} payslip already exists for this period. Creating a ${newType} payslip will overwrite it. Continue?`)) {
-          return;
-        }
       }
     } catch (err) {
       console.error('Error checking existing payslips:', err);
@@ -1378,14 +1313,14 @@
 
     // Warn if no days worked
     if (data.daysWorked === 0) {
-      if (!confirm(`No attendance or approved leave found for this ${periodLabel}. This will create a payslip with ₱0.00 gross pay. Continue?`)) {
+      if (!confirm(`No attendance or approved leave found for this month. This will create a payslip with ₱0.00 gross pay. Continue?`)) {
         return;
       }
     }
 
     try {
       await db.upsertPayslip(data);
-      if (window.toastSuccess) toastSuccess('Success', 'Payroll generated successfully');
+      if (window.toastSuccess) toastSuccess('Success', 'Monthly payroll generated successfully');
 
       // Reset form
       const employeeSelect = document.getElementById('payrollInlineEmployeeSelect');
@@ -2144,15 +2079,25 @@
     if (modal) modal.style.display = 'flex';
   };
 
-  // Generate receipt HTML content
+  // Generate receipt HTML content (Simple Peso Receipt - Client's final format)
   function generateReceiptHTML(payslip, emp) {
-    const gross = Number(payslip.gross_pay) || 0;
-    const net = Number(payslip.net_pay) || 0;
-    const sss = Number(payslip.sss) || 0;
-    const philhealth = Number(payslip.philhealth) || 0;
-    const pagibig = Number(payslip.pagibig) || 0;
+    const dailyRate = 510; // Fixed rate
     const lateDeduction = Number(payslip.late_deduction) || 0;
-    const totalDeductions = sss + philhealth + pagibig + lateDeduction;
+
+    // Client's formula:
+    // No. of Days: 6 (hardcoded)
+    // Late: shown in Pesos only
+    // Gross = (6 × 510) - Late
+    // Net = Gross - 750
+    const RECEIPT_DAYS = 6;
+    const receiptGross = (RECEIPT_DAYS * dailyRate) - lateDeduction;
+    const FIXED_DEDUCTIONS = 750;
+    const receiptNet = Math.max(0, receiptGross - FIXED_DEDUCTIONS);
+
+    // Format period
+    const startDate = new Date(payslip.week_start);
+    const endDate = new Date(payslip.week_end);
+    const periodLabel = `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.getDate()}`;
 
     return `
       <!DOCTYPE html>
@@ -2163,170 +2108,134 @@
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            max-width: 400px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 30px;
+            max-width: 350px;
             margin: 0 auto;
             background: #fff;
+            color: #1f2937;
           }
           .header {
             text-align: center;
-            border-bottom: 2px solid #1e3a5f;
-            padding-bottom: 15px;
             margin-bottom: 20px;
           }
-          .company-name {
-            font-size: 24px;
+          .title {
+            font-size: 15px;
             font-weight: bold;
-            color: #1e3a5f;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
           }
-          .receipt-title {
-            font-size: 16px;
+          .period {
+            font-size: 11px;
             color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 2px;
           }
           .employee-info {
-            background: #f3f4f6;
-            padding: 15px;
-            border-radius: 8px;
+            text-align: center;
             margin-bottom: 20px;
           }
-          .employee-info div {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-          }
-          .employee-info div:last-child { margin-bottom: 0; }
-          .label { color: #6b7280; font-size: 13px; }
-          .value { font-weight: 600; color: #1f2937; }
-          .section { margin-bottom: 20px; }
-          .section-title {
+          .emp-name {
+            font-size: 13px;
             font-weight: 600;
-            color: #1e3a5f;
-            margin-bottom: 10px;
-            font-size: 14px;
-            text-transform: uppercase;
+            margin-bottom: 2px;
           }
-          .line-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 14px;
+          .emp-id {
+            font-size: 11px;
+            color: #6b7280;
+            margin-bottom: 2px;
           }
-          .line-item:last-child { border-bottom: none; }
-          .deduction { color: #ef4444; }
-          .total-section {
-            background: #1e3a5f;
-            color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
+          .rate {
+            font-size: 11px;
+            color: #6b7280;
+          }
+          .body-section {
+            margin-bottom: 16px;
+          }
+          .row {
+            display: grid;
+            grid-template-columns: 1fr 40px 80px;
+            padding: 6px 0;
+            font-size: 12px;
+          }
+          .row-label { text-align: left; }
+          .row-value { text-align: right; }
+          .divider {
+            border-top: 1px solid #e5e7eb;
+            margin: 8px 0;
           }
           .total-row {
             display: flex;
             justify-content: space-between;
-            font-size: 14px;
-            margin-bottom: 10px;
-          }
-          .total-row:last-child { margin-bottom: 0; }
-          .net-pay {
-            font-size: 24px;
-            font-weight: bold;
-            color: #10b981;
+            font-weight: 600;
+            font-size: 13px;
+            padding: 6px 0;
           }
           .footer {
             text-align: center;
             margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px dashed #d1d5db;
+            font-size: 10px;
             color: #9ca3af;
-            font-size: 12px;
           }
-          .footer p { margin-bottom: 5px; }
+          .signature-line {
+            margin-bottom: 8px;
+          }
           @media print {
-            body { padding: 10px; }
-            .no-print { display: none; }
+            body { padding: 15px; }
           }
         </style>
       </head>
       <body>
         <div class="header">
-          <div class="company-name">C4S Food Solution</div>
-          <div class="receipt-title">Payslip Receipt</div>
+          <div class="title">PAYROLL - PAYSLIP (Monthly)</div>
+          <div class="period">Period: ${periodLabel}</div>
         </div>
 
         <div class="employee-info">
-          <div>
-            <span class="label">Employee Name</span>
-            <span class="value">${emp.name || 'Unknown'}</span>
-          </div>
-          <div>
-            <span class="label">Employee ID</span>
-            <span class="value">${payslip.employee_id}</span>
-          </div>
-          <div>
-            <span class="label">Pay Period</span>
-            <span class="value">${payslip.week_start || '—'} to ${payslip.week_end || '—'}</span>
-          </div>
-          <div>
-            <span class="label">Status</span>
-            <span class="value">${payslip.status || 'Pending'}</span>
-          </div>
+          <div class="emp-name">${emp.name || 'Unknown'}</div>
+          <div class="emp-id">${payslip.employee_id}</div>
+          <div class="rate">Rate/day: P${dailyRate.toFixed(2)}</div>
         </div>
 
-        <div class="section">
-          <div class="section-title">Earnings</div>
-          <div class="line-item">
-            <span>Gross Pay</span>
-            <span>₱${gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+        <div class="body-section">
+          <div class="row">
+            <span class="row-label">No. of Days</span>
+            <span class="row-value">${RECEIPT_DAYS}</span>
+            <span class="row-value">P${(RECEIPT_DAYS * dailyRate).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
-        </div>
+          <div class="row">
+            <span class="row-label">Late</span>
+            <span class="row-value"></span>
+            <span class="row-value">P${lateDeduction.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          </div>
+          
+          <div style="margin-top:12px;font-weight:600;font-size:12px">Less:</div>
+          <div style="display:grid;grid-template-columns:1fr 60px 60px;gap:2px;margin-top:6px;font-size:11px">
+            <div></div>
+            <div style="text-align:center;font-weight:600;text-decoration:underline">EE</div>
+            <div style="text-align:center;font-weight:600;text-decoration:underline">ER</div>
+            <div>SSS</div>
+            <div style="text-align:center">P300</div>
+            <div style="text-align:center">P610</div>
+            <div>PhilHealth</div>
+            <div style="text-align:center">P250</div>
+            <div style="text-align:center">P250</div>
+            <div>Pag-IBIG</div>
+            <div style="text-align:center">P200</div>
+            <div style="text-align:center">P200</div>
+          </div>
 
-        <div class="section">
-          <div class="section-title">Deductions</div>
-          <div class="line-item">
-            <span>SSS</span>
-            <span class="deduction">-₱${sss.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-          </div>
-          <div class="line-item">
-            <span>PhilHealth</span>
-            <span class="deduction">-₱${philhealth.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-          </div>
-          <div class="line-item">
-            <span>Pag-IBIG</span>
-            <span class="deduction">-₱${pagibig.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-          </div>
-          <div class="line-item">
-            <span>Late Deduction</span>
-            <span class="deduction">-₱${lateDeduction.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-          </div>
-          <div class="line-item" style="font-weight:600">
-            <span>Total Deductions</span>
-            <span class="deduction">-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-          </div>
-        </div>
-
-        <div class="total-section">
+          <div class="divider" style="margin-top:12px"></div>
           <div class="total-row">
-            <span>Gross Pay</span>
-            <span>₱${gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            <span>Gross (monthly)</span>
+            <span>P${receiptGross.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
           <div class="total-row">
-            <span>Total Deductions</span>
-            <span>-₱${totalDeductions.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-          </div>
-          <div class="total-row" style="border-top:1px solid rgba(255,255,255,0.3);padding-top:10px;margin-top:10px">
-            <span style="font-size:18px">NET PAY</span>
-            <span class="net-pay">₱${net.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            <span>Net (monthly)</span>
+            <span>P${receiptNet.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
         </div>
 
         <div class="footer">
-          <p>Generated on ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          <p>This is a computer-generated receipt.</p>
+          <div class="signature-line">Received by: ____________________</div>
+          <div>Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
         </div>
       </body>
       </html>
@@ -2358,115 +2267,153 @@
 
   function generatePayslipPDF(payslip, emp, logoImg) {
     const { jsPDF } = window.jspdf;
-    // Receipt size: half of A4 height (portrait), width stays same
+    // Receipt size: half of A4 lengthwise (landscape-ish receipt)
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [210, 148]  // width x height (half A4 length)
+      format: [148, 210]  // width x height (A5 size - half A4)
     });
 
     const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 18;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let y = 20;
 
-    // Format period dates nicely
+    // Format period dates
     const startDate = new Date(payslip.week_start);
     const endDate = new Date(payslip.week_end);
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const isMonthly = payslip.period_type === 'monthly';
-    const periodLabel = isMonthly
-      ? `${monthNames[startDate.getMonth()]} ${startDate.getFullYear()}`
-      : `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
-    const periodTypeLabel = isMonthly ? 'MONTHLY' : 'WEEKLY';
+    const periodLabel = `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.getDate()}`;
 
-    // Header
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`PAYROLL - PAYSLIP (${periodTypeLabel})`, pageWidth / 2, y, { align: 'center' });
-
-    y += 6;
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Period: ${periodLabel}`, pageWidth / 2, y, { align: 'center' });
-
-    // Company logo (top right) - square logo 225x225px
+    // Company logo (top right)
     if (logoImg) {
       try {
-        doc.addImage(logoImg, 'PNG', pageWidth - 30, 8, 20, 20);
+        doc.addImage(logoImg, 'PNG', pageWidth - 25, 12, 15, 15);
       } catch (e) {
         console.log('Could not add logo to PDF');
       }
     }
 
-    // Employee info
-    y += 12;
+    // ============================================
+    // HEADER - Centered
+    // ============================================
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAYROLL - PAYSLIP (Monthly)', pageWidth / 2, y, { align: 'center' });
+
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Period: ${periodLabel}`, pageWidth / 2, y, { align: 'center' });
+
+    // Employee info - centered
+    y += 14;
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.text(emp.name || 'Unknown', pageWidth / 2, y, { align: 'center' });
     y += 6;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.text(payslip.employee_id, pageWidth / 2, y, { align: 'center' });
 
-    // Rate per day (salary field now stores daily rate directly)
-    y += 10;
-    const dailyRate = emp.salary || 510;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    // Rate per day - centered
+    y += 6;
+    const dailyRate = 510;
     doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });
 
-    // Table - wider to prevent text overlap
-    y += 10;
-    const tableX = 15;
-    const tableWidth = pageWidth - 30;
-    const col1Width = tableWidth - 50;
-    const rowHeight = 9;
+    // ============================================
+    // BODY SECTION
+    // ============================================
+    y += 16;
+    const leftMargin = 25;
+    const rightMargin = pageWidth - 25;
+    const contentWidth = rightMargin - leftMargin;
 
-    // Draw table rows
-    const periodSuffix = isMonthly ? 'month' : 'week';
-    const rows = [
-      ['Worked Hours (actual)', `${payslip.worked_hours || 0} h`],
-      ['Payable Hours (capped)', `${payslip.payable_hours || 0} h`],
-      ['Late', `${Math.floor((payslip.late_minutes || 0) / 60)}h ${(payslip.late_minutes || 0) % 60}m`],
-      ['SSS', `P${Number(payslip.sss || 300)}`],
-      ['PhilHealth', `P${Number(payslip.philhealth || 250)}`],
-      ['Pag-IBIG', `P${Number(payslip.pagibig || 200)}`],
-      [`Gross (${periodSuffix})`, `P${Number(payslip.gross_pay || 0)}`],
-      [`Net (${periodSuffix})`, `P${Number(payslip.net_pay || 0)}`]
-    ];
+    // Receipt calculations
+    const RECEIPT_DAYS = 6;
+    const lateDeduction = Number(payslip.late_deduction) || 0;
+    const receiptGross = (RECEIPT_DAYS * dailyRate) - lateDeduction;
+    const FIXED_DEDUCTIONS = 750;
+    const receiptNet = receiptGross - FIXED_DEDUCTIONS;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
 
-    const tableStartY = y;
+    // No. of Days with computed amount (6 × 510 = 3060)
+    const daysAmount = RECEIPT_DAYS * dailyRate;
+    doc.text('No. of Days', leftMargin, y);
+    doc.text(`${RECEIPT_DAYS}`, leftMargin + 55, y);
+    doc.text(`P${daysAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, rightMargin, y, { align: 'right' });
 
-    rows.forEach((row, index) => {
-      // Draw horizontal line at top of row
-      doc.line(tableX, y, tableX + tableWidth, y);
+    // Late
+    y += 8;
+    doc.text('Late', leftMargin, y);
+    doc.text(`P${lateDeduction.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, rightMargin, y, { align: 'right' });
 
-      // Draw text
-      doc.setFont('helvetica', index >= 6 ? 'bold' : 'normal');
-      doc.text(row[0], tableX + 3, y + 6.5);
-      doc.text(row[1], tableX + tableWidth - 3, y + 6.5, { align: 'right' });
+    // ============================================
+    // LESS: EE/ER BREAKDOWN
+    // ============================================
+    y += 14;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Less:', leftMargin, y);
 
-      y += rowHeight;
-    });
+    // Column positions for EE/ER
+    const eeColX = pageWidth / 2 + 5;
+    const erColX = pageWidth / 2 + 35;
 
-    // Bottom line
-    doc.line(tableX, y, tableX + tableWidth, y);
+    // Headers
+    y += 10;
+    doc.setFontSize(10);
+    doc.text('EE', eeColX, y, { align: 'center' });
+    doc.text('ER', erColX, y, { align: 'center' });
 
-    // Left and right vertical lines
-    doc.line(tableX, tableStartY, tableX, y);
-    doc.line(tableX + tableWidth, tableStartY, tableX + tableWidth, y);
-    // Middle vertical line
-    doc.line(tableX + col1Width, tableStartY, tableX + col1Width, y);
+    // Underlines for headers
+    doc.setDrawColor(100, 100, 100);
+    doc.line(eeColX - 12, y + 2, eeColX + 12, y + 2);
+    doc.line(erColX - 12, y + 2, erColX + 12, y + 2);
 
-    // Footer (centered)
-    y += 12;
+    // SSS
+    y += 10;
+    doc.setFont('helvetica', 'normal');
+    doc.text('SSS', leftMargin, y);
+    doc.text('P300', eeColX, y, { align: 'center' });
+    doc.text('P610', erColX, y, { align: 'center' });
+
+    // PhilHealth
+    y += 8;
+    doc.text('PhilHealth', leftMargin, y);
+    doc.text('P250', eeColX, y, { align: 'center' });
+    doc.text('P250', erColX, y, { align: 'center' });
+
+    // Pag-IBIG
+    y += 8;
+    doc.text('Pag-IBIG', leftMargin, y);
+    doc.text('P200', eeColX, y, { align: 'center' });
+    doc.text('P200', erColX, y, { align: 'center' });
+
+    // ============================================
+    // TOTALS
+    // ============================================
+    y += 14;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Gross (monthly)', leftMargin, y);
+    doc.text(`P${receiptGross.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, rightMargin, y, { align: 'right' });
+
+    y += 10;
+    doc.text('Net (monthly)', leftMargin, y);
+    doc.text(`P${Math.max(0, receiptNet).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, rightMargin, y, { align: 'right' });
+
+    // ============================================
+    // FOOTER - Centered at bottom
+    // ============================================
+    y = pageHeight - 35;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text('Received by: _____________________', pageWidth / 2, y, { align: 'center' });
-    y += 8;
-    doc.setFontSize(10);
+    doc.text('Received by: ____________________', pageWidth / 2, y, { align: 'center' });
+
+    y += 12;
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
     doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, pageWidth / 2, y, { align: 'center' });
 
     // Download

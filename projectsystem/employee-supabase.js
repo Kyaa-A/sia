@@ -231,8 +231,7 @@
     if (usernameEl) usernameEl.textContent = currentEmployee.name;
     if (salaryEl) {
       const dailyRate = currentEmployee.salary || 510;
-      const weeklySalary = dailyRate * 6;
-      salaryEl.textContent = `₱${Number(weeklySalary).toLocaleString(undefined, {minimumFractionDigits: 2})} / week`;
+      salaryEl.textContent = `₱${Number(dailyRate).toLocaleString(undefined, {minimumFractionDigits: 2})} / day`;
     }
 
     // Update avatar
@@ -490,6 +489,14 @@
     const payslip = payslips.find(p => p.id === id);
     if (!payslip) return;
 
+    // Client's simple formula for display
+    const dailyRate = 510;
+    const RECEIPT_DAYS = 6;
+    const lateDeduction = Number(payslip.late_deduction) || 0;
+    const receiptGross = (RECEIPT_DAYS * dailyRate) - lateDeduction;
+    const FIXED_DEDUCTIONS = 750;
+    const receiptNet = Math.max(0, receiptGross - FIXED_DEDUCTIONS);
+
     const content = document.getElementById('payslipContent');
     if (content) {
       content.innerHTML = `
@@ -507,27 +514,30 @@
             <div style="font-weight:600">${payslip.week_start} to ${payslip.week_end}</div>
           </div>
           <div>
-            <div class="muted">Status</div>
-            <div style="font-weight:600">${payslip.status}</div>
+            <div class="muted">Rate/day</div>
+            <div style="font-weight:600">₱${dailyRate.toFixed(2)}</div>
           </div>
         </div>
         <hr style="margin:16px 0">
+        <div style="display:grid;grid-template-columns:1fr 40px 80px;gap:8px">
+          <div>No. of Days:</div>
+          <div style="text-align:center;font-weight:600">${RECEIPT_DAYS}</div>
+          <div style="text-align:right;font-weight:600">₱${(RECEIPT_DAYS * dailyRate).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div>Late:</div>
+          <div style="text-align:center"></div>
+          <div style="text-align:right;color:#ef4444">₱${lateDeduction.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        </div>
+        <hr style="margin:16px 0">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div>Gross Pay:</div>
-          <div style="text-align:right;font-weight:600">₱${Number(payslip.gross_pay).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-          <div>SSS:</div>
-          <div style="text-align:right;color:#ef4444">-₱${Number(payslip.sss || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-          <div>PhilHealth:</div>
-          <div style="text-align:right;color:#ef4444">-₱${Number(payslip.philhealth || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-          <div>Pag-IBIG:</div>
-          <div style="text-align:right;color:#ef4444">-₱${Number(payslip.pagibig || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-          <div>Late Deduction:</div>
-          <div style="text-align:right;color:#ef4444">-₱${Number(payslip.late_deduction || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div style="font-weight:600">Gross (monthly):</div>
+          <div style="text-align:right;font-weight:600">₱${receiptGross.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div>Less:</div>
+          <div style="text-align:right;color:#ef4444">₱${FIXED_DEDUCTIONS.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
         </div>
         <hr style="margin:16px 0">
         <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700">
-          <span>Net Pay:</span>
-          <span style="color:#10b981">₱${Number(payslip.net_pay).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          <span>Net (monthly):</span>
+          <span style="color:#10b981">₱${receiptNet.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
         </div>
       `;
     }
@@ -563,115 +573,152 @@
 
   function generatePDF(payslip, logoImg) {
     const { jsPDF } = window.jspdf;
-    // Receipt size: half of A4 height (portrait), width stays same
+    // Receipt size: A5 (half A4)
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [210, 148]  // width x height (half A4 length)
+      format: [148, 210]  // width x height (A5 size - half A4)
     });
 
     const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 18;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let y = 20;
 
-    // Format period dates nicely
+    // Format period dates
     const startDate = new Date(payslip.week_start);
     const endDate = new Date(payslip.week_end);
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const isMonthly = payslip.period_type === 'monthly';
-    const periodLabel = isMonthly
-      ? `${monthNames[startDate.getMonth()]} ${startDate.getFullYear()}`
-      : `${monthNames[startDate.getMonth()]} ${startDate.getDate()} - ${endDate.getDate()}`;
-    const periodTypeLabel = isMonthly ? 'MONTHLY' : 'WEEKLY';
+    const periodLabel = `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.getDate()}`;
 
-    // Header
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`PAYROLL - PAYSLIP (${periodTypeLabel})`, pageWidth / 2, y, { align: 'center' });
-
-    y += 6;
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Period: ${periodLabel}`, pageWidth / 2, y, { align: 'center' });
-
-    // Company logo (top right) - square logo 225x225px
+    // Company logo (top right)
     if (logoImg) {
       try {
-        doc.addImage(logoImg, 'PNG', pageWidth - 30, 8, 20, 20);
+        doc.addImage(logoImg, 'PNG', pageWidth - 25, 12, 15, 15);
       } catch (e) {
         console.log('Could not add logo to PDF');
       }
     }
 
-    // Employee info
-    y += 12;
+    // ============================================
+    // HEADER - Centered
+    // ============================================
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PAYROLL - PAYSLIP (Monthly)', pageWidth / 2, y, { align: 'center' });
+
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Period: ${periodLabel}`, pageWidth / 2, y, { align: 'center' });
+
+    // Employee info - centered
+    y += 14;
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
-    doc.text(currentEmployee.name, pageWidth / 2, y, { align: 'center' });
+    doc.text(currentEmployee.name || 'Unknown', pageWidth / 2, y, { align: 'center' });
     y += 6;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.text(currentEmployee.id, pageWidth / 2, y, { align: 'center' });
 
-    // Rate per day (salary field now stores daily rate directly)
-    y += 10;
-    const dailyRate = currentEmployee.salary || 510;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    // Rate per day - centered
+    y += 6;
+    const dailyRate = 510;
     doc.text(`Rate/day: P${dailyRate.toFixed(2)}`, pageWidth / 2, y, { align: 'center' });
 
-    // Table - wider to prevent text overlap
-    y += 10;
-    const tableX = 15;
-    const tableWidth = pageWidth - 30;
-    const col1Width = tableWidth - 50;
-    const rowHeight = 9;
+    // ============================================
+    // BODY SECTION
+    // ============================================
+    y += 16;
+    const leftMargin = 25;
+    const rightMargin = pageWidth - 25;
 
-    // Draw table rows
-    const periodSuffix = isMonthly ? 'month' : 'week';
-    const rows = [
-      ['Worked Hours (actual)', `${payslip.worked_hours || 0} h`],
-      ['Payable Hours (capped)', `${payslip.payable_hours || 0} h`],
-      ['Late', `${Math.floor((payslip.late_minutes || 0) / 60)}h ${(payslip.late_minutes || 0) % 60}m`],
-      ['SSS', `P${Number(payslip.sss || 300)}`],
-      ['PhilHealth', `P${Number(payslip.philhealth || 250)}`],
-      ['Pag-IBIG', `P${Number(payslip.pagibig || 200)}`],
-      [`Gross (${periodSuffix})`, `P${Number(payslip.gross_pay || 0)}`],
-      [`Net (${periodSuffix})`, `P${Number(payslip.net_pay || 0)}`]
-    ];
+    // Receipt calculations
+    const RECEIPT_DAYS = 6;
+    const lateDeduction = Number(payslip.late_deduction) || 0;
+    const receiptGross = (RECEIPT_DAYS * dailyRate) - lateDeduction;
+    const FIXED_DEDUCTIONS = 750;
+    const receiptNet = receiptGross - FIXED_DEDUCTIONS;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
 
-    const tableStartY = y;
+    // No. of Days with computed amount (6 × 510 = 3060)
+    const daysAmount = RECEIPT_DAYS * dailyRate;
+    doc.text('No. of Days', leftMargin, y);
+    doc.text(`${RECEIPT_DAYS}`, leftMargin + 55, y);
+    doc.text(`P${daysAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, rightMargin, y, { align: 'right' });
 
-    rows.forEach((row, index) => {
-      // Draw horizontal line at top of row
-      doc.line(tableX, y, tableX + tableWidth, y);
+    // Late
+    y += 8;
+    doc.text('Late', leftMargin, y);
+    doc.text(`P${lateDeduction.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, rightMargin, y, { align: 'right' });
 
-      // Draw text
-      doc.setFont('helvetica', index >= 6 ? 'bold' : 'normal');
-      doc.text(row[0], tableX + 3, y + 6.5);
-      doc.text(row[1], tableX + tableWidth - 3, y + 6.5, { align: 'right' });
+    // ============================================
+    // LESS: EE/ER BREAKDOWN
+    // ============================================
+    y += 14;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Less:', leftMargin, y);
 
-      y += rowHeight;
-    });
+    // Column positions for EE/ER
+    const eeColX = pageWidth / 2 + 5;
+    const erColX = pageWidth / 2 + 35;
 
-    // Bottom line
-    doc.line(tableX, y, tableX + tableWidth, y);
+    // Headers
+    y += 10;
+    doc.setFontSize(10);
+    doc.text('EE', eeColX, y, { align: 'center' });
+    doc.text('ER', erColX, y, { align: 'center' });
 
-    // Left and right vertical lines
-    doc.line(tableX, tableStartY, tableX, y);
-    doc.line(tableX + tableWidth, tableStartY, tableX + tableWidth, y);
-    // Middle vertical line
-    doc.line(tableX + col1Width, tableStartY, tableX + col1Width, y);
+    // Underlines for headers
+    doc.setDrawColor(100, 100, 100);
+    doc.line(eeColX - 12, y + 2, eeColX + 12, y + 2);
+    doc.line(erColX - 12, y + 2, erColX + 12, y + 2);
 
-    // Footer (centered)
-    y += 12;
+    // SSS
+    y += 10;
+    doc.setFont('helvetica', 'normal');
+    doc.text('SSS', leftMargin, y);
+    doc.text('P300', eeColX, y, { align: 'center' });
+    doc.text('P610', erColX, y, { align: 'center' });
+
+    // PhilHealth
+    y += 8;
+    doc.text('PhilHealth', leftMargin, y);
+    doc.text('P250', eeColX, y, { align: 'center' });
+    doc.text('P250', erColX, y, { align: 'center' });
+
+    // Pag-IBIG
+    y += 8;
+    doc.text('Pag-IBIG', leftMargin, y);
+    doc.text('P200', eeColX, y, { align: 'center' });
+    doc.text('P200', erColX, y, { align: 'center' });
+
+    // ============================================
+    // TOTALS
+    // ============================================
+    y += 14;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Gross (monthly)', leftMargin, y);
+    doc.text(`P${receiptGross.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, rightMargin, y, { align: 'right' });
+
+    y += 10;
+    doc.text('Net (monthly)', leftMargin, y);
+    doc.text(`P${Math.max(0, receiptNet).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, rightMargin, y, { align: 'right' });
+
+    // ============================================
+    // FOOTER - Centered at bottom
+    // ============================================
+    y = pageHeight - 35;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text('Received by: _____________________', pageWidth / 2, y, { align: 'center' });
-    y += 8;
-    doc.setFontSize(10);
+    doc.text('Received by: ____________________', pageWidth / 2, y, { align: 'center' });
+
+    y += 12;
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
     doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, pageWidth / 2, y, { align: 'center' });
 
     // Download

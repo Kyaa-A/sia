@@ -17,10 +17,10 @@ CREATE TABLE IF NOT EXISTS employees (
     username VARCHAR(100) UNIQUE,
     password_hash VARCHAR(255),                    -- Plain text in current impl, should hash
     role VARCHAR(100) NOT NULL,
-    salary DECIMAL(12, 2) NOT NULL DEFAULT 159120, -- Annual salary (PHP)
-    sss_deduction DECIMAL(10, 2) DEFAULT 300,
-    philhealth_deduction DECIMAL(10, 2) DEFAULT 250,
-    pagibig_deduction DECIMAL(10, 2) DEFAULT 200,
+    salary DECIMAL(12, 2) NOT NULL DEFAULT 510,    -- Daily rate (PHP) - Fixed at 510
+    sss_deduction DECIMAL(10, 2) DEFAULT 300,      -- Fixed EE deduction
+    philhealth_deduction DECIMAL(10, 2) DEFAULT 250, -- Fixed EE deduction
+    pagibig_deduction DECIMAL(10, 2) DEFAULT 200,  -- Fixed EE deduction
     last_net DECIMAL(12, 2) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'archived')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -91,21 +91,23 @@ CREATE INDEX IF NOT EXISTS idx_leave_status ON leave_requests(status);
 CREATE INDEX IF NOT EXISTS idx_leave_dates ON leave_requests(start_date, end_date);
 
 -- ============================================
--- PAYSLIPS TABLE
+-- PAYSLIPS TABLE (Monthly Payroll)
 -- ============================================
 CREATE TABLE IF NOT EXISTS payslips (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     employee_id VARCHAR(50) NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-    week_start DATE NOT NULL,
-    week_end DATE,
-    gross_pay DECIMAL(12, 2) NOT NULL DEFAULT 0,
-    sss DECIMAL(10, 2) DEFAULT 0,
-    philhealth DECIMAL(10, 2) DEFAULT 0,
-    pagibig DECIMAL(10, 2) DEFAULT 0,
-    late_deduction DECIMAL(10, 2) DEFAULT 0,
-    total_deductions DECIMAL(10, 2) DEFAULT 0,
-    net_pay DECIMAL(12, 2) NOT NULL DEFAULT 0,
-    worked_hours DECIMAL(6, 2) DEFAULT 0,
+    week_start DATE NOT NULL,                      -- Period start date
+    week_end DATE,                                 -- Period end date
+    period_type VARCHAR(20) DEFAULT 'monthly',    -- Always 'monthly'
+    days_worked INTEGER DEFAULT 0,                -- Actual days worked
+    gross_pay DECIMAL(12, 2) NOT NULL DEFAULT 0,  -- days_worked × 510
+    sss DECIMAL(10, 2) DEFAULT 300,               -- Fixed EE deduction
+    philhealth DECIMAL(10, 2) DEFAULT 250,        -- Fixed EE deduction
+    pagibig DECIMAL(10, 2) DEFAULT 200,           -- Fixed EE deduction
+    late_deduction DECIMAL(10, 2) DEFAULT 0,      -- Calculated from late_minutes
+    late_minutes INTEGER DEFAULT 0,               -- Total late minutes
+    total_deductions DECIMAL(10, 2) DEFAULT 0,    -- 750 + late_deduction
+    net_pay DECIMAL(12, 2) NOT NULL DEFAULT 0,    -- gross_pay - total_deductions
     status VARCHAR(20) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Rejected')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -203,9 +205,34 @@ ALTER PUBLICATION supabase_realtime ADD TABLE leave_requests;
 ALTER PUBLICATION supabase_realtime ADD TABLE payslips;
 
 -- ============================================
+-- MIGRATION: Add Monthly Payroll Columns (for existing databases)
+-- ============================================
+-- Run these if you have an existing database without the new columns
+ALTER TABLE payslips ADD COLUMN IF NOT EXISTS days_worked INTEGER DEFAULT 0;
+ALTER TABLE payslips ADD COLUMN IF NOT EXISTS period_type VARCHAR(20) DEFAULT 'monthly';
+ALTER TABLE payslips ADD COLUMN IF NOT EXISTS late_minutes INTEGER DEFAULT 0;
+
+-- Update employees salary default from annual to daily rate
+ALTER TABLE employees ALTER COLUMN salary SET DEFAULT 510;
+
+-- Update existing employees with old annual salary to daily rate
+-- UPDATE employees SET salary = 510 WHERE salary > 1000;
+
+-- ============================================
+-- SEED DATA: Default Deduction Values
+-- ============================================
+-- Fixed deduction values used by the system:
+-- SSS (EE): P300, (ER): P610
+-- PhilHealth (EE): P250, (ER): P250
+-- Pag-IBIG (EE): P200, (ER): P200
+-- Total EE Deductions: P750 (fixed)
+-- Daily Rate: P510 (fixed)
+-- Receipt shows: 6 days hardcoded
+
+-- ============================================
 -- SAMPLE DATA (Optional - for testing)
 -- ============================================
 -- Uncomment to insert sample admin account
 -- INSERT INTO employees (id, name, email, username, password_hash, role, salary)
--- VALUES ('ADMIN', 'Administrator', 'admin@c4s.com', 'admin', '0304', 'Admin', 0)
+-- VALUES ('ADMIN', 'Administrator', 'admin@c4s.com', 'admin', '0304', 'Admin', 510)
 -- ON CONFLICT (id) DO NOTHING;
